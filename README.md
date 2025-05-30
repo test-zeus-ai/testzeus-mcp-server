@@ -1,6 +1,6 @@
 # TestZeus FastMCP Server
 
-A modern FastMCP server that exposes TestZeus SDK functionality to MCP clients like Claude Desktop.
+A modern FastMCP server that exposes TestZeus SDK functionality to MCP clients like Claude Desktop and Cursor.
 
 ## Features
 
@@ -9,34 +9,155 @@ A modern FastMCP server that exposes TestZeus SDK functionality to MCP clients l
 - **Resource Browsing**: Browse TestZeus entities as MCP resources
 - **Context Logging**: Built-in logging and error handling with FastMCP Context
 
-## Installation
+## Quick Start
 
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+### For End Users
+
+#### Option 1: Install from PyPI (Recommended)
 
 ```bash
-# Install uv if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install the package
+pip install testzeus-mcp-server
 
-# Install dependencies
-uv sync
-
-# Run the server
-uv run testzeus-mcp-server
+# Or using uv (faster)
+uv tool install testzeus-mcp-server
 ```
+
+#### Option 2: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/testzeus/testzeus-mcp-server.git
+cd testzeus-mcp-server
+
+# Install using uv
+uv sync
+```
+
+### Configuration
+
+#### Claude Desktop
+
+1. **Edit your Claude Desktop configuration file:**
+
+   **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   **Windows:** `%APPDATA%/Claude/claude_desktop_config.json`
+
+2. **Add the TestZeus MCP server configuration:**
+
+   ```json
+   {
+     "mcpServers": {
+       "testzeus": {
+         "command": "testzeus-mcp-server",
+         "args": [],
+         "env": {
+           "TESTZEUS_EMAIL": "your-email@example.com",
+           "TESTZEUS_PASSWORD": "your-password",
+           "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+         }
+       }
+     }
+   }
+   ```
+
+   **If installed from source:**
+   ```json
+   {
+     "mcpServers": {
+       "testzeus": {
+         "command": "uv",
+         "args": ["run", "testzeus-mcp-server"],
+         "cwd": "/path/to/testzeus-mcp-server",
+         "env": {
+           "TESTZEUS_EMAIL": "your-email@example.com",
+           "TESTZEUS_PASSWORD": "your-password",
+           "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop**
+
+#### Cursor IDE
+
+1. **Open Cursor Settings** (`Cmd/Ctrl + ,`)
+
+2. **Navigate to Extensions → Model Context Protocol**
+
+3. **Add a new MCP server with these settings:**
+
+   **From PyPI:**
+   ```json
+   {
+     "name": "TestZeus",
+     "command": "testzeus-mcp-server",
+     "args": [],
+     "env": {
+       "TESTZEUS_EMAIL": "your-email@example.com",
+       "TESTZEUS_PASSWORD": "your-password",
+       "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+     }
+   }
+   ```
+
+   **From Source:**
+   ```json
+   {
+     "name": "TestZeus",
+     "command": "uv",
+     "args": ["run", "testzeus-mcp-server"],
+     "cwd": "/path/to/testzeus-mcp-server",
+     "env": {
+       "TESTZEUS_EMAIL": "your-email@example.com",
+       "TESTZEUS_PASSWORD": "your-password",
+       "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+     }
+   }
+   ```
+
+4. **Save and restart Cursor**
 
 ## Usage
 
 ### Authentication
 
-First, authenticate with your TestZeus account:
+The server will automatically authenticate using the environment variables you provided. You can also manually authenticate:
 
-```python
-# Use the authenticate_testzeus tool
-{
-  "email": "your-email@example.com",
-  "password": "your-password",
-  "base_url": "https://api.testzeus.com"  # optional
-}
+```
+User: "Authenticate with TestZeus"
+Assistant: I'll authenticate you with TestZeus using your credentials.
+```
+
+### Basic Operations
+
+#### Viewing Tests
+```
+User: "What tests do I have?"
+Assistant: [Lists all available tests with descriptions]
+
+User: "Show me details of my login test"
+Assistant: [Displays comprehensive test information]
+```
+
+#### Creating Tests
+```
+User: "Create a test for user registration flow"
+Assistant: [Creates a new test with appropriate parameters]
+
+User: "Tag it with 'authentication' and 'critical'"
+Assistant: [Applies tags to the test]
+```
+
+#### Running Tests
+```
+User: "Run all tests tagged with 'smoke'"
+Assistant: [Discovers and runs smoke tests]
+
+User: "Check the status of recent test runs"
+Assistant: [Shows test run statuses and results]
 ```
 
 ### Available Tools
@@ -56,15 +177,114 @@ First, authenticate with your TestZeus account:
 
 ## Development
 
+### For Developers
+
+#### Prerequisites
+
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+
+#### Setup Development Environment
+
 ```bash
+# Clone the repository
+git clone https://github.com/testzeus/testzeus-mcp-server.git
+cd testzeus-mcp-server
+
 # Install development dependencies
 uv sync --dev
 
+# Or with pip
+pip install -e ".[dev]"
+```
+
+#### Development Commands
+
+```bash
+# Install dependencies
+make install
+
 # Run linting
-uv run ruff check .
+make lint
 
 # Run type checking
-uv run mypy .
+make type-check
+
+# Run tests (when available)
+make test
+
+# Run the server locally
+make run
+
+# Clean build artifacts
+make clean
+
+# Build package
+make build
+```
+
+#### Running from Source
+
+```bash
+# Run directly
+uv run testzeus-mcp-server
+
+# Or with make
+make run
+
+# With custom environment
+TESTZEUS_EMAIL=test@example.com uv run testzeus-mcp-server
+```
+
+#### Testing Your Changes
+
+1. **Configure your MCP client to use the local version**
+2. **Make your changes**
+3. **Test with your MCP client**
+4. **Run linting and type checking**
+
+#### Project Structure
+
+```
+testzeus-mcp-server/
+├── testzeus_mcp_server/
+│   ├── __init__.py
+│   ├── __main__.py        # Entry point
+│   └── server.py          # Main MCP server implementation
+├── .github/
+│   └── workflows/         # CI/CD workflows
+├── docs/                  # Documentation
+├── examples/              # Usage examples
+├── tests/                 # Test files (when added)
+├── pyproject.toml         # Project configuration
+├── uv.lock               # Dependency lock file
+├── Makefile              # Development commands
+└── README.md
+```
+
+#### Contributing
+
+1. **Fork the repository**
+2. **Create a feature branch**
+3. **Make your changes**
+4. **Add tests if applicable**
+5. **Run linting and type checking**
+6. **Submit a pull request**
+
+### Release Process
+
+```bash
+# Create a patch release (2.0.0 -> 2.0.1)
+make release-patch
+
+# Create a minor release (2.0.0 -> 2.1.0)
+make release-minor
+
+# Create a major release (2.0.0 -> 3.0.0)
+make release-major
+
+# Create a custom release
+make release-custom
 ```
 
 ## Architecture
@@ -91,33 +311,45 @@ The implementation focuses purely on TestZeus business logic without MCP protoco
 | Agent Configs | `agent-config://id` | AI agent configurations |
 | Test Designs | `test-design://id` | Test templates and patterns |
 
-## Example Workflows
+## Troubleshooting
 
-### Natural Test Discovery
-```
-User: "What tests do I have?"
-Claude: [Lists all test resources with descriptions]
+### Common Issues
 
-User: "Show me details of my login test"
-Claude: [Reads and displays test://login-test-id content]
-```
+#### Authentication Failed
+- Verify your email and password in the configuration
+- Check if TESTZEUS_BASE_URL is correct
+- Ensure your TestZeus account is active
 
-### Intelligent Test Creation
-```
-User: "Create a test for user registration flow"
-Claude: [Uses create_test tool with appropriate parameters]
+#### MCP Server Not Found
+```bash
+# Check if the package is installed
+pip list | grep testzeus-mcp-server
 
-User: "Tag it with 'authentication' and 'critical'"
-Claude: [Applies tags during creation or updates existing test]
+# Reinstall if needed
+pip install --upgrade testzeus-mcp-server
 ```
 
-### Test Execution Management
+#### Permission Denied
+```bash
+# On macOS/Linux, you might need to make the script executable
+chmod +x $(which testzeus-mcp-server)
 ```
-User: "Run all tests tagged with 'smoke'"
-Claude: [Discovers tests with smoke tag, runs each one]
 
-User: "Check the status of recent test runs"
-Claude: [Lists test-run resources with status information]
+#### Environment Variables Not Set
+Make sure environment variables are properly set in your MCP client configuration.
+
+### Debug Mode
+
+```bash
+# Run with debug logging
+TESTZEUS_DEBUG=true uv run testzeus-mcp-server
+
+# Or set in your MCP client configuration
+"env": {
+  "TESTZEUS_DEBUG": "true",
+  "TESTZEUS_EMAIL": "your-email@example.com",
+  "TESTZEUS_PASSWORD": "your-password"
+}
 ```
 
 ## Error Handling
@@ -128,36 +360,12 @@ The server provides detailed error messages for common issues:
 - TestZeus API errors
 - Network connectivity issues
 
-## Development
-
-### Project Structure
-```
-testzeus-mcp-server/
-├── testzeus_mcp_server/
-│   ├── __init__.py
-│   └── server.py          # Main MCP server implementation
-├── examples/
-│   └── usage_examples.md  # Detailed usage examples
-├── docs/
-│   └── ARCHITECTURE.md    # Technical architecture
-├── requirements.txt       # Python dependencies
-└── README.md
-```
-
-### Dependencies
+## Dependencies
 
 - **testzeus-sdk**: Official TestZeus Python SDK
-- **mcp**: Model Context Protocol implementation
+- **fastmcp**: Modern MCP server framework
 - **aiohttp**: Async HTTP client
 - **pydantic**: Data validation
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## License
 
