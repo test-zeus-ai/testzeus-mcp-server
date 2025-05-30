@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "testzeus-mcp-server"
+version = "2.0.0"
+description = "FastMCP server for TestZeus SDK - enables Claude and other MCP clients to conduct intelligent testing activities"
+authors = [
+    {name = "TestZeus Team", email = "info@testzeus.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "testzeus-sdk>=0.0.9",
+    "aiohttp>=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+testzeus-mcp-server = "testzeus_mcp_server.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/testzeus/testzeus-mcp-server"
+Repository = "https://github.com/testzeus/testzeus-mcp-server.git"
+Issues = "https://github.com/testzeus/testzeus-mcp-server/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["testzeus_mcp_server"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true 
