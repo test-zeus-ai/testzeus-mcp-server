@@ -2,7 +2,6 @@
 Main entry point for TestZeus FastMCP Server.
 """
 
-import asyncio
 import sys
 
 
