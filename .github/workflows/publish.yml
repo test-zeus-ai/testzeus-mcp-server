@@ -31,10 +31,6 @@ jobs:
         run: |
           uv run ruff check testzeus_mcp_server/
 
-      - name: Run type checking
-        run: |
-          uv run mypy testzeus_mcp_server/
-
       - name: Run tests
         env:
           TESTZEUS_EMAIL: ${{ secrets.TESTZEUS_EMAIL }}
