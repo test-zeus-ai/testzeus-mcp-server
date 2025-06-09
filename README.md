@@ -167,6 +167,24 @@ Assistant: [Lists all available test data with details]
 
 User: "Create test data for user signup scenarios"
 Assistant: [Creates new test data with appropriate content]
+
+User: "Add a CSV file to my test data"
+Assistant: [Adds supporting file to test data]
+
+User: "Remove all files from test data ID 123"
+Assistant: [Removes all supporting files from the test data]
+```
+
+#### Managing Environment Files
+```
+User: "Add a configuration file to my staging environment"
+Assistant: [Adds the specified file to the environment]
+
+User: "Remove the old config.json from environment"
+Assistant: [Removes the specific file from environment]
+
+User: "Clean up all files from my test environment"
+Assistant: [Removes all supporting files from the environment]
 ```
 
 #### Managing Tags
@@ -182,8 +200,8 @@ Assistant: [Creates a new tag for test organization]
 
 - **Test Management**: `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_test`
 - **Test Run Management**: `list_test_runs`, `get_test_run`, `create_test_run`, `delete_test_run`
-- **Environment Management**: `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`
-- **Test Data Management**: `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`
+- **Environment Management**: `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
+- **Test Data Management**: `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
 - **Tag Management**: `list_tags`, `get_tag`, `create_tags`, `update_tag`, `delete_tag`
 
 ### Available Resources
