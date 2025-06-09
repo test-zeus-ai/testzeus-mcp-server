@@ -8,7 +8,7 @@ functionality to MCP clients like Claude Desktop in a clean, modern way.
 import json
 import logging
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional, Dict, Any, Union, List
 
 from fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
@@ -68,7 +68,13 @@ async def authenticate_testzeus(
 
 # Test Management Tools
 @mcp.tool()
-async def list_tests(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_tests(
+    page: int = 1, 
+    per_page: int = 50, 
+    ctx: Context = None,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[Union[str, List[str]]] = None,
+    ) -> str:
     """List all tests in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -76,6 +82,10 @@ async def list_tests(page: int = 1, per_page: int = 50, ctx: Context = None) -> 
     try:
         per_page = min(per_page, 100)  # Cap at 100
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.tests.get_list(**params)
         tests = result.get("items", [])
 
@@ -258,7 +268,7 @@ async def run_test(
         if ctx:
             await ctx.info(f"Started test run for test: {test_id_or_name}")
 
-        return f"Successfully started test run '{test_run['name']}' with ID: {test_run['id']}"
+        return f"Successfully started test run '{test_run.name}' with ID: {test_run.id}"
     except Exception as e:
         error_msg = f"Error running test: {str(e)}"
         if ctx:
@@ -268,7 +278,13 @@ async def run_test(
 
 # Test Run Management Tools
 @mcp.tool()
-async def list_test_runs(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_test_runs(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[Union[str, List[str]]] = None,
+    ) -> str:
     """List all test runs in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -276,6 +292,10 @@ async def list_test_runs(page: int = 1, per_page: int = 50, ctx: Context = None)
     try:
         per_page = min(per_page, 100)  # Cap at 100
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.test_runs.get_list(**params)
         test_runs = result.get("items", [])
 
@@ -370,7 +390,13 @@ async def delete_test_run(test_run_id: str, ctx: Context = None) -> str:
 
 # Environment Management Tools
 @mcp.tool()
-async def list_environments(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_environments(
+    page: int = 1, 
+    per_page: int = 50, 
+    ctx: Context = None,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[Union[str, List[str]]] = None,
+    ) -> str:
     """List all environments in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -378,6 +404,10 @@ async def list_environments(page: int = 1, per_page: int = 50, ctx: Context = No
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.environments.get_list(**params)
         environments = result.get("items", [])
 
@@ -670,7 +700,13 @@ async def update_test_data(
 
 
 @mcp.tool()
-async def list_test_data(page: int = 1, per_page: int = 10, ctx: Context = None) -> str:
+async def list_test_data(
+    page: int = 1, 
+    per_page: int = 10, 
+    ctx: Context = None,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[Union[str, List[str]]] = None,
+    ) -> str:
     """List all test data."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -678,6 +714,10 @@ async def list_test_data(page: int = 1, per_page: int = 10, ctx: Context = None)
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.test_data.get_list(**params)
         test_data_full_list = result.get("items", [])
 
@@ -733,7 +773,13 @@ async def create_tags(name: str, value: str | None = None, ctx: Context = None) 
 
 
 @mcp.tool()
-async def list_tags(page: int = 1, per_page: int = 10, ctx: Context = None) -> str:
+async def list_tags(
+    page: int = 1,
+    per_page: int = 10, 
+    ctx: Context = None,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[Union[str, List[str]]] = None,
+    ) -> str:
     """List all tags."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -741,6 +787,10 @@ async def list_tags(page: int = 1, per_page: int = 10, ctx: Context = None) -> s
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.tags.get_list(**params)
         tags = result.get("items", [])
 
