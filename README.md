@@ -160,11 +160,49 @@ User: "Check the status of recent test runs"
 Assistant: [Shows test run statuses and results]
 ```
 
+#### Managing Test Data
+```
+User: "Show me all test data"
+Assistant: [Lists all available test data with details]
+
+User: "Create test data for user signup scenarios"
+Assistant: [Creates new test data with appropriate content]
+
+User: "Add a CSV file to my test data"
+Assistant: [Adds supporting file to test data]
+
+User: "Remove all files from test data ID 123"
+Assistant: [Removes all supporting files from the test data]
+```
+
+#### Managing Environment Files
+```
+User: "Add a configuration file to my staging environment"
+Assistant: [Adds the specified file to the environment]
+
+User: "Remove the old config.json from environment"
+Assistant: [Removes the specific file from environment]
+
+User: "Clean up all files from my test environment"
+Assistant: [Removes all supporting files from the environment]
+```
+
+#### Managing Tags
+```
+User: "List all my tags"
+Assistant: [Shows all available tags and their values]
+
+User: "Create a tag for priority with value 'high'"
+Assistant: [Creates a new tag for test organization]
+```
+
 ### Available Tools
 
 - **Test Management**: `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_test`
-- **Test Run Management**: `list_test_runs`, `get_test_run`, `create_test_run`
-- **Environment Management**: `list_environments`, `get_environment`, `create_environment`
+- **Test Run Management**: `list_test_runs`, `get_test_run`, `create_test_run`, `delete_test_run`
+- **Environment Management**: `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
+- **Test Data Management**: `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
+- **Tag Management**: `list_tags`, `get_tag`, `create_tags`, `update_tag`, `delete_tag`
 
 ### Available Resources
 
@@ -174,6 +212,10 @@ Assistant: [Shows test run statuses and results]
 - `test-run://{test_run_id}` - View specific test run details
 - `environments://` - Browse all environments
 - `environment://{environment_id}` - View specific environment details
+- `test-data://` - Browse all test data
+- `test-data://{test_data_id}` - View specific test data details
+- `tags://` - Browse all tags
+- `tag://{tag_id}` - View specific tag details
 
 ## Development
 
@@ -305,11 +347,8 @@ The implementation focuses purely on TestZeus business logic without MCP protoco
 | Tests | `test://id` | Test configurations and metadata |
 | Test Runs | `test-run://id` | Test execution instances |
 | Environments | `environment://id` | Test environment configurations |
-| Tags | `tag://id` | Test organization tags |
 | Test Data | `test-data://id` | Test datasets and fixtures |
-| Users | `user://id` | TestZeus user accounts |
-| Agent Configs | `agent-config://id` | AI agent configurations |
-| Test Designs | `test-design://id` | Test templates and patterns |
+| Tags | `tag://id` | Test organization tags |
 
 ## Troubleshooting
 

@@ -8,7 +8,7 @@ functionality to MCP clients like Claude Desktop in a clean, modern way.
 import json
 import logging
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
@@ -68,7 +68,13 @@ async def authenticate_testzeus(
 
 # Test Management Tools
 @mcp.tool()
-async def list_tests(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_tests(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
     """List all tests in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -76,6 +82,10 @@ async def list_tests(page: int = 1, per_page: int = 50, ctx: Context = None) -> 
     try:
         per_page = min(per_page, 100)  # Cap at 100
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.tests.get_list(**params)
         tests = result.get("items", [])
 
@@ -143,8 +153,8 @@ async def create_test(
     name: str,
     test_feature: str,
     status: str = "draft",
-    test_data: list | None = None,
-    tags: list | None = None,
+    test_data: list[str] | None = None,
+    tags: list[str] | None = None,
     environment: str | None = None,
     execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
@@ -181,8 +191,8 @@ async def update_test(
     name: str | None = None,
     test_feature: str | None = None,
     status: str | None = None,
-    test_data: list | None = None,
-    tags: list | None = None,
+    test_data: list[str] | None = None,
+    tags: list[str] | None = None,
     environment: str | None = None,
     execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
@@ -258,7 +268,7 @@ async def run_test(
         if ctx:
             await ctx.info(f"Started test run for test: {test_id_or_name}")
 
-        return f"Successfully started test run '{test_run['name']}' with ID: {test_run['id']}"
+        return f"Successfully started test run '{test_run.name}' with ID: {test_run.id}"
     except Exception as e:
         error_msg = f"Error running test: {str(e)}"
         if ctx:
@@ -268,7 +278,13 @@ async def run_test(
 
 # Test Run Management Tools
 @mcp.tool()
-async def list_test_runs(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_test_runs(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
     """List all test runs in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -276,6 +292,10 @@ async def list_test_runs(page: int = 1, per_page: int = 50, ctx: Context = None)
     try:
         per_page = min(per_page, 100)  # Cap at 100
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.test_runs.get_list(**params)
         test_runs = result.get("items", [])
 
@@ -370,7 +390,13 @@ async def delete_test_run(test_run_id: str, ctx: Context = None) -> str:
 
 # Environment Management Tools
 @mcp.tool()
-async def list_environments(page: int = 1, per_page: int = 50, ctx: Context = None) -> str:
+async def list_environments(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
     """List all environments in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -378,6 +404,10 @@ async def list_environments(page: int = 1, per_page: int = 50, ctx: Context = No
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.environments.get_list(**params)
         environments = result.get("items", [])
 
@@ -535,6 +565,60 @@ async def delete_environment(environment_id: str, ctx: Context = None) -> str:
 
 
 @mcp.tool()
+async def remove_all_environment_files(environment_id: str, ctx: Context = None) -> str:
+    """Remove all environment files."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.environments.remove_all_files(environment_id)
+        if ctx:
+            await ctx.info(f"Removed all environment files with ID: {environment_id}")
+        return f"Successfully removed all environment files with ID: {environment_id}"
+    except Exception as e:
+        error_msg = f"Error removing all environment files: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def add_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
+    """Add a environment file."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.environments.add_file(environment_id, file_path)
+        if ctx:
+            await ctx.info(f"Added file to environment: {environment_id}")
+        return f"Successfully added file to environment with ID: {environment_id}"
+    except Exception as e:
+        error_msg = f"Error adding environment file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
+    """Remove a environment file."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.environments.remove_file(environment_id, file_path)
+        if ctx:
+            await ctx.info(f"Removed file from environment: {environment_id}")
+        return f"Successfully removed file from environment with ID: {environment_id}"
+    except Exception as e:
+        error_msg = f"Error removing environment file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
 async def get_test_data(test_id: str, ctx: Context = None) -> str:
     """Get the test data for a specific test."""
     if not await ensure_authenticated():
@@ -670,7 +754,13 @@ async def update_test_data(
 
 
 @mcp.tool()
-async def list_test_data(page: int = 1, per_page: int = 10, ctx: Context = None) -> str:
+async def list_test_data(
+    page: int = 1,
+    per_page: int = 10,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
     """List all test data."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -678,6 +768,10 @@ async def list_test_data(page: int = 1, per_page: int = 10, ctx: Context = None)
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.test_data.get_list(**params)
         test_data_full_list = result.get("items", [])
 
@@ -712,6 +806,60 @@ async def list_test_data(page: int = 1, per_page: int = 10, ctx: Context = None)
 
 
 @mcp.tool()
+async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> str:
+    """Remove all test data files."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.test_data.remove_all_files(test_data_id)
+        if ctx:
+            await ctx.info(f"Removed all test data files for test data: {test_data_id}")
+        return f"Successfully removed all test data files for test data with ID: {test_data_id}"
+    except Exception as e:
+        error_msg = f"Error removing all test data files: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
+    """Add a test data file."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.test_data.add_file(test_data_id, file_path)
+        if ctx:
+            await ctx.info(f"Added file to test data: {test_data_id}")
+        return f"Successfully added file to test data with ID: {test_data_id}"
+    except Exception as e:
+        error_msg = f"Error adding file to test data: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
+    """Remove a test data file."""
+    if not await ensure_authenticated():
+        return "Error: Not authenticated. Use authenticate_testzeus first."
+
+    try:
+        await testzeus_client.test_data.remove_file(test_data_id, file_path)
+        if ctx:
+            await ctx.info(f"Removed file from test data: {test_data_id}")
+        return f"Successfully removed file from test data with ID: {test_data_id}"
+    except Exception as e:
+        error_msg = f"Error removing file from test data: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
 async def create_tags(name: str, value: str | None = None, ctx: Context = None) -> str:
     """Create a new tag."""
     if not await ensure_authenticated():
@@ -733,7 +881,13 @@ async def create_tags(name: str, value: str | None = None, ctx: Context = None) 
 
 
 @mcp.tool()
-async def list_tags(page: int = 1, per_page: int = 10, ctx: Context = None) -> str:
+async def list_tags(
+    page: int = 1,
+    per_page: int = 10,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
     """List all tags."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -741,6 +895,10 @@ async def list_tags(page: int = 1, per_page: int = 10, ctx: Context = None) -> s
     try:
         per_page = min(per_page, 100)
         params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
         result = await testzeus_client.tags.get_list(**params)
         tags = result.get("items", [])
 
