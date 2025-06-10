@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.0.0",
-    "testzeus-sdk>=0.0.9",
+    "testzeus-sdk>=0.0.10",
     "aiohttp>=3.8.0",
 ]
 

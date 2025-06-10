@@ -74,7 +74,7 @@ async def list_tests(
     ctx: Context = None,
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
-    ) -> str:
+) -> str:
     """List all tests in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -284,7 +284,7 @@ async def list_test_runs(
     ctx: Context = None,
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
-    ) -> str:
+) -> str:
     """List all test runs in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -396,7 +396,7 @@ async def list_environments(
     ctx: Context = None,
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
-    ) -> str:
+) -> str:
     """List all environments in TestZeus."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -563,6 +563,7 @@ async def delete_environment(environment_id: str, ctx: Context = None) -> str:
             await ctx.error(error_msg)
         return error_msg
 
+
 @mcp.tool()
 async def remove_all_environment_files(environment_id: str, ctx: Context = None) -> str:
     """Remove all environment files."""
@@ -580,6 +581,7 @@ async def remove_all_environment_files(environment_id: str, ctx: Context = None)
             await ctx.error(error_msg)
         return error_msg
 
+
 @mcp.tool()
 async def add_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
     """Add a environment file."""
@@ -596,6 +598,7 @@ async def add_environment_file(environment_id: str, file_path: str, ctx: Context
         if ctx:
             await ctx.error(error_msg)
         return error_msg
+
 
 @mcp.tool()
 async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
@@ -757,7 +760,7 @@ async def list_test_data(
     ctx: Context = None,
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
-    ) -> str:
+) -> str:
     """List all test data."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -801,6 +804,7 @@ async def list_test_data(
             await ctx.error(error_msg)
         return error_msg
 
+
 @mcp.tool()
 async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> str:
     """Remove all test data files."""
@@ -817,6 +821,7 @@ async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> 
         if ctx:
             await ctx.error(error_msg)
         return error_msg
+
 
 @mcp.tool()
 async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
@@ -835,6 +840,7 @@ async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = N
             await ctx.error(error_msg)
         return error_msg
 
+
 @mcp.tool()
 async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
     """Remove a test data file."""
@@ -851,6 +857,7 @@ async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context 
         if ctx:
             await ctx.error(error_msg)
         return error_msg
+
 
 @mcp.tool()
 async def create_tags(name: str, value: str | None = None, ctx: Context = None) -> str:
@@ -880,7 +887,7 @@ async def list_tags(
     ctx: Context = None,
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
-    ) -> str:
+) -> str:
     """List all tags."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
