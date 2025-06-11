@@ -410,13 +410,6 @@ The server provides detailed error messages for common issues:
 
 MIT License - see LICENSE file for details.
 
-## Support
-
-- 📖 Documentation: [TestZeus Docs](https://docs.testzeus.com)
-- 💬 Community: [TestZeus Discord](https://discord.gg/testzeus)
-- 🐛 Issues: [GitHub Issues](https://github.com/testzeus/testzeus-mcp-server/issues)
-- 📧 Contact: support@testzeus.com
-
 ## Why MCP Resources?
 
 Traditional tool-only approaches require users to know exactly what tools to call. With MCP resources:
