@@ -10,6 +10,7 @@ def main() -> None:
     try:
         from .server import mcp
 
+        print("Running TestZeus MCP Server...")
         mcp.run()
     except KeyboardInterrupt:
         print("\nShutting down TestZeus MCP Server...")

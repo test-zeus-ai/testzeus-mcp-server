@@ -7,10 +7,11 @@ functionality to MCP clients like Claude Desktop in a clean, modern way.
 
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Literal
 
-from fastmcp import Context, FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
 
 # Set up logging
@@ -43,13 +44,26 @@ async def ensure_authenticated() -> bool:
         return False
 
 
-# Authentication
 @mcp.tool()
 async def authenticate_testzeus(
-    email: str, password: str, base_url: str | None = None, ctx: Context = None
+    email: str | None = None,
+    password: str | None = None,
+    base_url: str | None = None,
+    ctx: Context = None,
 ) -> str:
     """Authenticate with TestZeus platform using email and password."""
     global testzeus_client
+
+    # Fallback to environment variables if arguments aren’t passed
+    email = email or os.getenv("TESTZEUS_EMAIL")
+    password = password or os.getenv("TESTZEUS_PASSWORD")
+    base_url = base_url or os.getenv("TESTZEUS_BASE_URL")
+
+    if not email or not password:
+        error_msg = "Missing credentials: email and password are required"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         testzeus_client = TestZeusClient(email=email, password=password, base_url=base_url)
@@ -1240,7 +1254,12 @@ async def list_tags_resource() -> str:
         tag_list = []
         for tag in tags:
             tag_list.append(
-                {"id": tag.id, "name": tag.name, "value": tag.value, "uri": f"tag://{tag.id}"}
+                {
+                    "id": tag.id,
+                    "name": tag.name,
+                    "value": tag.value,
+                    "uri": f"tag://{tag.id}",
+                }
             )
 
         return json.dumps({"tags": tag_list}, indent=2)
