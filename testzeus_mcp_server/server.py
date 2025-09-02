@@ -66,9 +66,7 @@ async def authenticate_testzeus(
         return error_msg
 
     try:
-        testzeus_client = TestZeusClient(
-            email=email, password=password, base_url=base_url
-        )
+        testzeus_client = TestZeusClient(email=email, password=password, base_url=base_url)
         await testzeus_client.ensure_authenticated()
 
         if ctx:
@@ -353,9 +351,7 @@ async def get_test_run(test_run_id: str, ctx: Context = None) -> str:
         if ctx:
             await ctx.info(f"Retrieved test run: {details}")
 
-        return (
-            f"Test run details:\n{json.dumps(details, cls=DateTimeEncoder, indent=2)}"
-        )
+        return f"Test run details:\n{json.dumps(details, cls=DateTimeEncoder, indent=2)}"
     except Exception as e:
         error_msg = f"Error getting test run: {str(e)}"
         if ctx:
@@ -373,9 +369,7 @@ async def create_test_run(test_id: str, name: str, ctx: Context = None) -> str:
         return "Error: Name and test_id are required to run a test."
 
     try:
-        test_run = await testzeus_client.test_runs.create_and_start(
-            name=name, test=test_id
-        )
+        test_run = await testzeus_client.test_runs.create_and_start(name=name, test=test_id)
 
         if ctx:
             await ctx.info(f"Created test run: {test_run.name}")
@@ -603,9 +597,7 @@ async def remove_all_environment_files(environment_id: str, ctx: Context = None)
 
 
 @mcp.tool()
-async def add_environment_file(
-    environment_id: str, file_path: str, ctx: Context = None
-) -> str:
+async def add_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
     """Add a environment file."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -623,9 +615,7 @@ async def add_environment_file(
 
 
 @mcp.tool()
-async def remove_environment_file(
-    environment_id: str, file_path: str, ctx: Context = None
-) -> str:
+async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
     """Remove a environment file."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -848,9 +838,7 @@ async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> 
 
 
 @mcp.tool()
-async def add_test_data_file(
-    test_data_id: str, file_path: str, ctx: Context = None
-) -> str:
+async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
     """Add a test data file."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
@@ -868,9 +856,7 @@ async def add_test_data_file(
 
 
 @mcp.tool()
-async def remove_test_data_file(
-    test_data_id: str, file_path: str, ctx: Context = None
-) -> str:
+async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
     """Remove a test data file."""
     if not await ensure_authenticated():
         return "Error: Not authenticated. Use authenticate_testzeus first."
