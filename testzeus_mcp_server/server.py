@@ -8,11 +8,10 @@ functionality to MCP clients like Claude Desktop in a clean, modern way.
 import json
 import logging
 import os
-
 from datetime import datetime
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
 
 # Set up logging
