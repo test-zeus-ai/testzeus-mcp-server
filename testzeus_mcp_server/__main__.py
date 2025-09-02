@@ -9,6 +9,7 @@ def main() -> None:
     """Main entry point for the TestZeus FastMCP Server."""
     try:
         from .server import mcp
+
         print("Running TestZeus MCP Server...")
         mcp.run()
     except KeyboardInterrupt:
