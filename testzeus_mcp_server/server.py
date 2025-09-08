@@ -63,9 +63,7 @@ async def authenticate_testzeus(
         return error_msg
 
     try:
-        testzeus_client = TestZeusClient(
-            email=email, password=password
-        )
+        testzeus_client = TestZeusClient(email=email, password=password)
         await testzeus_client.ensure_authenticated()
 
         if ctx:
