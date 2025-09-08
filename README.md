@@ -5,7 +5,7 @@ A modern FastMCP server that exposes TestZeus SDK functionality to MCP clients l
 ## Features
 
 - **FastMCP Integration**: Built with the modern FastMCP framework for clean, efficient MCP server implementation
-- **Core TestZeus Operations**: Authenticate, manage tests, test runs, and environments
+- **Core TestZeus Operations**: manage tests, test runs, tags and environments
 - **Resource Browsing**: Browse TestZeus entities as MCP resources
 - **Context Logging**: Built-in logging and error handling with FastMCP Context
 
@@ -45,34 +45,17 @@ uv sync
 
 2. **Add the TestZeus MCP server configuration:**
 
-   ```json
-   {
-     "mcpServers": {
-       "testzeus": {
-         "command": "testzeus-mcp-server",
-         "args": [],
-         "env": {
-           "TESTZEUS_EMAIL": "your-email@example.com",
-           "TESTZEUS_PASSWORD": "your-password",
-           "TESTZEUS_BASE_URL": "https://api.testzeus.com"
-         }
-       }
-     }
-   }
-   ```
 
-   **If installed from source:**
    ```json
    {
      "mcpServers": {
        "testzeus": {
          "command": "uv",
          "args": ["run", "testzeus-mcp-server"],
-         "cwd": "/path/to/testzeus-mcp-server",
          "env": {
+           "PATH": "/path/to/testzeus-mcp-server",
            "TESTZEUS_EMAIL": "your-email@example.com",
-           "TESTZEUS_PASSWORD": "your-password",
-           "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+           "TESTZEUS_PASSWORD": "your-password"
          }
        }
      }
@@ -89,31 +72,15 @@ uv sync
 
 3. **Add a new MCP server with these settings:**
 
-   **From PyPI:**
-   ```json
-   {
-     "name": "TestZeus",
-     "command": "testzeus-mcp-server",
-     "args": [],
-     "env": {
-       "TESTZEUS_EMAIL": "your-email@example.com",
-       "TESTZEUS_PASSWORD": "your-password",
-       "TESTZEUS_BASE_URL": "https://api.testzeus.com"
-     }
-   }
-   ```
-
-   **From Source:**
    ```json
    {
      "name": "TestZeus",
      "command": "uv",
      "args": ["run", "testzeus-mcp-server"],
-     "cwd": "/path/to/testzeus-mcp-server",
      "env": {
+       "PATH": "/path/to/testzeus-mcp-server",
        "TESTZEUS_EMAIL": "your-email@example.com",
-       "TESTZEUS_PASSWORD": "your-password",
-       "TESTZEUS_BASE_URL": "https://api.testzeus.com"
+       "TESTZEUS_PASSWORD": "your-password"
      }
    }
    ```
@@ -121,15 +88,6 @@ uv sync
 4. **Save and restart Cursor**
 
 ## Usage
-
-### Authentication
-
-The server will automatically authenticate using the environment variables you provided. You can also manually authenticate:
-
-```
-User: "Authenticate with TestZeus"
-Assistant: I'll authenticate you with TestZeus using your credentials.
-```
 
 ### Basic Operations
 
@@ -274,9 +232,14 @@ uv run testzeus-mcp-server
 # Or with make
 make run
 
+# To get mcp server location
+uv run mcp dev testzeus_mcp_server/server.py
+
 # With custom environment
 TESTZEUS_EMAIL=test@example.com uv run testzeus-mcp-server
 ```
+
+then copy the servers File and paste it into llm (claude, codex) config file.
 
 #### Testing Your Changes
 
@@ -313,22 +276,6 @@ testzeus-mcp-server/
 5. **Run linting and type checking**
 6. **Submit a pull request**
 
-### Release Process
-
-```bash
-# Create a patch release (2.0.0 -> 2.0.1)
-make release-patch
-
-# Create a minor release (2.0.0 -> 2.1.0)
-make release-minor
-
-# Create a major release (2.0.0 -> 3.0.0)
-make release-major
-
-# Create a custom release
-make release-custom
-```
-
 ## Architecture
 
 This server is built with FastMCP, providing:
@@ -356,7 +303,6 @@ The implementation focuses purely on TestZeus business logic without MCP protoco
 
 #### Authentication Failed
 - Verify your email and password in the configuration
-- Check if TESTZEUS_BASE_URL is correct
 - Ensure your TestZeus account is active
 
 #### MCP Server Not Found
@@ -377,19 +323,10 @@ chmod +x $(which testzeus-mcp-server)
 #### Environment Variables Not Set
 Make sure environment variables are properly set in your MCP client configuration.
 
-### Debug Mode
+Find Path by running mcp inspector, copy the Servers File and paste it in llm (claude, codex, cursor, ...) config.json file.
 
-```bash
-# Run with debug logging
-TESTZEUS_DEBUG=true uv run testzeus-mcp-server
+```uv run mcp dev testzeus_mcp_server/server.py```
 
-# Or set in your MCP client configuration
-"env": {
-  "TESTZEUS_DEBUG": "true",
-  "TESTZEUS_EMAIL": "your-email@example.com",
-  "TESTZEUS_PASSWORD": "your-password"
-}
-```
 
 ## Error Handling
 

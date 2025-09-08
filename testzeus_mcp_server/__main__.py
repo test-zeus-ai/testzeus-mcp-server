@@ -10,7 +10,8 @@ def main() -> None:
     try:
         from .server import mcp
 
-        print("Running TestZeus MCP Server...")
+        print("Starting TestZeus MCP Server...")
+        # FastMCP handles its own async event loop
         mcp.run()
     except KeyboardInterrupt:
         print("\nShutting down TestZeus MCP Server...")

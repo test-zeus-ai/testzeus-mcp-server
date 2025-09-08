@@ -44,11 +44,9 @@ async def ensure_authenticated() -> bool:
         return False
 
 
-@mcp.tool()
 async def authenticate_testzeus(
     email: str | None = None,
     password: str | None = None,
-    base_url: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Authenticate with TestZeus platform using email and password."""
@@ -57,7 +55,6 @@ async def authenticate_testzeus(
     # Fallback to environment variables if arguments aren’t passed
     email = email or os.getenv("TESTZEUS_EMAIL")
     password = password or os.getenv("TESTZEUS_PASSWORD")
-    base_url = base_url or os.getenv("TESTZEUS_BASE_URL")
 
     if not email or not password:
         error_msg = "Missing credentials: email and password are required"
@@ -66,7 +63,7 @@ async def authenticate_testzeus(
         return error_msg
 
     try:
-        testzeus_client = TestZeusClient(email=email, password=password, base_url=base_url)
+        testzeus_client = TestZeusClient(email=email, password=password)
         await testzeus_client.ensure_authenticated()
 
         if ctx:
@@ -91,7 +88,7 @@ async def list_tests(
 ) -> str:
     """List all tests in TestZeus."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         per_page = min(per_page, 100)  # Cap at 100
@@ -132,7 +129,7 @@ async def list_tests(
 async def get_test(test_id_or_name: str, ctx: Context = None) -> str:
     """Get a specific test by ID or name."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         test = await testzeus_client.tests.get_one(test_id_or_name)
@@ -175,7 +172,7 @@ async def create_test(
 ) -> str:
     """Create a new test in TestZeus."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         test = await testzeus_client.tests.create_test(
@@ -213,7 +210,7 @@ async def update_test(
 ) -> str:
     """Update an existing test in TestZeus."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         data = {}
@@ -248,7 +245,7 @@ async def update_test(
 async def delete_test(test_id_or_name: str, ctx: Context = None) -> str:
     """Delete a test (sets status to deleted)."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.tests.delete(test_id_or_name)
@@ -272,7 +269,7 @@ async def run_test(
 ) -> str:
     """Execute a test and start a test run."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         test_run = await testzeus_client.tests.run_test(
@@ -301,7 +298,7 @@ async def list_test_runs(
 ) -> str:
     """List all test runs in TestZeus."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         per_page = min(per_page, 100)  # Cap at 100
@@ -343,7 +340,7 @@ async def list_test_runs(
 async def get_test_run(test_run_id: str, ctx: Context = None) -> str:
     """Get a specific test run by ID."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         details = await testzeus_client.test_runs.get_expanded(test_run_id)
@@ -363,7 +360,7 @@ async def get_test_run(test_run_id: str, ctx: Context = None) -> str:
 async def create_test_run(test_id: str, name: str, ctx: Context = None) -> str:
     """Create a new test run."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     if not name or not test_id:
         return "Error: Name and test_id are required to run a test."
@@ -386,7 +383,7 @@ async def create_test_run(test_id: str, name: str, ctx: Context = None) -> str:
 async def delete_test_run(test_run_id: str, ctx: Context = None) -> str:
     """Delete a test run."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.test_runs.delete(test_run_id)
@@ -413,7 +410,7 @@ async def list_environments(
 ) -> str:
     """List all environments in TestZeus."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         per_page = min(per_page, 100)
@@ -455,7 +452,7 @@ async def list_environments(
 async def get_environment(environment_id_or_name: str, ctx: Context = None) -> str:
     """Get a specific environment by ID or name."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         env = await testzeus_client.environments.get_one(environment_id_or_name)
@@ -494,7 +491,7 @@ async def create_environment(
 ) -> str:
     """Create a new environment."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         env = await testzeus_client.environments.create_environment(
@@ -528,7 +525,7 @@ async def update_environment(
 ) -> str:
     """Update an environment."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         data = {}
@@ -561,7 +558,7 @@ async def update_environment(
 async def delete_environment(environment_id: str, ctx: Context = None) -> str:
     """Delete an environment."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.environments.delete(environment_id)
@@ -582,7 +579,7 @@ async def delete_environment(environment_id: str, ctx: Context = None) -> str:
 async def remove_all_environment_files(environment_id: str, ctx: Context = None) -> str:
     """Remove all environment files."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.environments.remove_all_files(environment_id)
@@ -600,7 +597,7 @@ async def remove_all_environment_files(environment_id: str, ctx: Context = None)
 async def add_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
     """Add a environment file."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.environments.add_file(environment_id, file_path)
@@ -618,7 +615,7 @@ async def add_environment_file(environment_id: str, file_path: str, ctx: Context
 async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
     """Remove a environment file."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.environments.remove_file(environment_id, file_path)
@@ -636,7 +633,7 @@ async def remove_environment_file(environment_id: str, file_path: str, ctx: Cont
 async def get_test_data(test_id: str, ctx: Context = None) -> str:
     """Get the test data for a specific test."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         test = await testzeus_client.test_data.get_one(test_id)
@@ -678,7 +675,7 @@ async def create_test_data(
 ) -> str:
     """Create a new test data."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         test_data = await testzeus_client.test_data.create_test_data(
@@ -706,7 +703,7 @@ async def create_test_data(
 async def delete_test_data(test_data_id: str, ctx: Context = None) -> str:
     """Delete a test data."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.test_data.delete(test_data_id)
@@ -736,7 +733,7 @@ async def update_test_data(
 ) -> str:
     """Update a test data."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         data = {}
@@ -777,7 +774,7 @@ async def list_test_data(
 ) -> str:
     """List all test data."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         per_page = min(per_page, 100)
@@ -823,7 +820,7 @@ async def list_test_data(
 async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> str:
     """Remove all test data files."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.test_data.remove_all_files(test_data_id)
@@ -841,7 +838,7 @@ async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> 
 async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
     """Add a test data file."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.test_data.add_file(test_data_id, file_path)
@@ -859,7 +856,7 @@ async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = N
 async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
     """Remove a test data file."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.test_data.remove_file(test_data_id, file_path)
@@ -877,7 +874,7 @@ async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context 
 async def create_tags(name: str, value: str | None = None, ctx: Context = None) -> str:
     """Create a new tag."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         _ = await testzeus_client.tags.create_tag(name=name, value=value)
@@ -904,7 +901,7 @@ async def list_tags(
 ) -> str:
     """List all tags."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         per_page = min(per_page, 100)
@@ -946,7 +943,7 @@ async def list_tags(
 async def get_tag(tag_id: str, ctx: Context = None) -> str:
     """Get a specific tag."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         tag = await testzeus_client.tags.get_one(tag_id)
@@ -977,7 +974,7 @@ async def get_tag(tag_id: str, ctx: Context = None) -> str:
 async def delete_tag(tag_id: str, ctx: Context = None) -> str:
     """Delete a tag."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         await testzeus_client.tags.delete(tag_id)
@@ -1000,7 +997,7 @@ async def update_tag(
 ) -> str:
     """Update a tag."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus first."
+        await authenticate_testzeus()
 
     try:
         data = {}
@@ -1028,7 +1025,7 @@ async def update_tag(
 async def list_tests_resource() -> str:
     """List all tests as a browsable resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         result = await testzeus_client.tests.get_list(per_page=100)
@@ -1055,7 +1052,7 @@ async def list_tests_resource() -> str:
 async def get_test_resource(test_id: str) -> str:
     """Get a specific test as a resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         test = await testzeus_client.tests.get_one(test_id)
@@ -1083,7 +1080,7 @@ async def get_test_resource(test_id: str) -> str:
 async def list_test_runs_resource() -> str:
     """List all test runs as a browsable resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         result = await testzeus_client.test_runs.get_list(per_page=100)
@@ -1110,7 +1107,7 @@ async def list_test_runs_resource() -> str:
 async def get_test_run_resource(test_run_id: str) -> str:
     """Get a specific test run as a resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         run = await testzeus_client.test_runs.get_one(test_run_id)
@@ -1139,7 +1136,7 @@ async def get_test_run_resource(test_run_id: str) -> str:
 async def list_environments_resource() -> str:
     """List all environments as a browsable resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         result = await testzeus_client.environments.get_list(per_page=100)
@@ -1166,7 +1163,7 @@ async def list_environments_resource() -> str:
 async def get_environment_resource(environment_id: str) -> str:
     """Get a specific environment as a resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         env = await testzeus_client.environments.get_one(environment_id)
@@ -1190,7 +1187,7 @@ async def get_environment_resource(environment_id: str) -> str:
 async def list_test_data_resource() -> str:
     """List all test data as a browsable resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         result = await testzeus_client.test_data.get_list(per_page=100)
@@ -1218,7 +1215,7 @@ async def list_test_data_resource() -> str:
 async def get_test_data_resource(test_data_id: str) -> str:
     """Get a specific test data as a resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         test_data = await testzeus_client.test_data.get_one(test_data_id)
@@ -1271,7 +1268,7 @@ async def list_tags_resource() -> str:
 async def get_tag_resource(tag_id: str) -> str:
     """Get a specific tag as a resource."""
     if not await ensure_authenticated():
-        return "Error: Not authenticated. Use authenticate_testzeus tool first."
+        await authenticate_testzeus()
 
     try:
         tag = await testzeus_client.tags.get_one(tag_id)
