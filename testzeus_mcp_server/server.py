@@ -11,9 +11,9 @@ import os
 from datetime import datetime
 from typing import Any, Literal
 
+from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
-from dotenv import load_dotenv
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -1252,7 +1252,8 @@ async def download_test_run_group_attachments(
 
         if ctx:
             await ctx.info(
-                f"Downloaded {total_files} attachments for test run group: {test_run_group_id_or_name}"
+                f"Downloaded {total_files} attachments for test run group: "
+                f"{test_run_group_id_or_name}"
             )
 
         result = {
@@ -1759,10 +1760,14 @@ async def create_test_report_schedule(
         cron_expression: Cron expression (mutually exclusive with filter_time_intervals)
         filter_tags: Filter using tag names (mutually exclusive with filter_tag_pattern)
         filter_tag_pattern: Filter using tag pattern (mutually exclusive with filter_tags)
-        filter_env: Filter using environment names (mutually exclusive with filter_env_pattern)
-        filter_env_pattern: Filter using environment pattern (mutually exclusive with filter_env)
-        filter_test_data: Filter using test data names (mutually exclusive with filter_test_data_pattern)
-        filter_test_data_pattern: Filter test data pattern (mutually exclusive with filter_test_data)
+        filter_env: Filter using environment names (mutually exclusive with
+            filter_env_pattern)
+        filter_env_pattern: Filter using environment pattern (mutually exclusive
+            with filter_env)
+        filter_test_data: Filter using test data names (mutually exclusive with
+            filter_test_data_pattern)
+        filter_test_data_pattern: Filter test data pattern (mutually exclusive
+            with filter_test_data)
         notification_channels: List of notification channel names
 
     Returns:
@@ -1843,10 +1848,14 @@ async def update_test_report_schedule(
         cron_expression: Cron expression (mutually exclusive with filter_time_intervals)
         filter_tags: Filter using tag names (mutually exclusive with filter_tag_pattern)
         filter_tag_pattern: Filter using tag pattern (mutually exclusive with filter_tags)
-        filter_env: Filter using environment names (mutually exclusive with filter_env_pattern)
-        filter_env_pattern: Filter using environment pattern (mutually exclusive with filter_env)
-        filter_test_data: Filter using test data names (mutually exclusive with filter_test_data_pattern)
-        filter_test_data_pattern: Filter test data pattern (mutually exclusive with filter_test_data)
+        filter_env: Filter using environment names (mutually exclusive with
+            filter_env_pattern)
+        filter_env_pattern: Filter using environment pattern (mutually exclusive
+            with filter_env)
+        filter_test_data: Filter using test data names (mutually exclusive with
+            filter_test_data_pattern)
+        filter_test_data_pattern: Filter test data pattern (mutually exclusive
+            with filter_test_data)
         notification_channels: List of notification channel names
 
     Returns:
@@ -2562,7 +2571,8 @@ async def remove_notification_config(
 
         if ctx:
             await ctx.info(
-                f"Removed {config_type} config from notification channel: {getattr(channel, 'name', channel.id)}"
+                f"Removed {config_type} config from notification channel: "
+                f"{getattr(channel, 'name', channel.id)}"
             )
 
         return json.dumps(channel_data, indent=2, cls=DateTimeEncoder)
