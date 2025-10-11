@@ -5,8 +5,11 @@ A modern FastMCP server that exposes TestZeus SDK functionality to MCP clients l
 ## Features
 
 - **FastMCP Integration**: Built with the modern FastMCP framework for clean, efficient MCP server implementation
-- **Core TestZeus Operations**: manage tests, test runs, tags and environments
-- **Resource Browsing**: Browse TestZeus entities as MCP resources
+- **Comprehensive TestZeus Operations**: Complete test lifecycle management including tests, test runs, test run groups, environments, test data, and tags
+- **Advanced Scheduling**: Test report scheduling with cron expressions and time-based filtering
+- **Multi-Channel Notifications**: Email and webhook notification support for test results
+- **Report Management**: Generate, download, and manage test reports in multiple formats (CTRF, PDF, CSV, ZIP)
+- **Resource Browsing**: Browse all TestZeus entities as MCP resources for easy discovery
 - **Context Logging**: Built-in logging and error handling with FastMCP Context
 
 ## Quick Start
@@ -118,6 +121,54 @@ User: "Check the status of recent test runs"
 Assistant: [Shows test run statuses and results]
 ```
 
+#### Managing Test Run Groups
+```
+User: "Create a test run group for regression testing"
+Assistant: [Creates a new test run group with multiple tests]
+
+User: "Execute my smoke test group"
+Assistant: [Runs all tests in the specified group]
+
+User: "Download the report for my last test run group"
+Assistant: [Downloads the group's test report in specified format]
+```
+
+#### Scheduling Test Reports
+```
+User: "Create a weekly test report schedule"
+Assistant: [Sets up automated test report generation]
+
+User: "Schedule daily reports for tests tagged 'critical'"
+Assistant: [Creates a schedule with tag-based filtering]
+
+User: "List all my active schedules"
+Assistant: [Shows all configured test report schedules]
+```
+
+#### Managing Notifications
+```
+User: "Create a notification channel for the dev team"
+Assistant: [Sets up email notifications for test results]
+
+User: "Add webhook notifications to my channel"
+Assistant: [Configures webhook integration for real-time alerts]
+
+User: "Show me all notification channels"
+Assistant: [Lists all configured notification channels]
+```
+
+#### Downloading Test Reports
+```
+User: "Download the latest test report as PDF"
+Assistant: [Downloads the most recent test report in PDF format]
+
+User: "Get the CTRF report for test run group XYZ"
+Assistant: [Downloads the Common Test Report Format file]
+
+User: "Show me all available test reports"
+Assistant: [Lists all generated test reports with their formats]
+```
+
 #### Managing Test Data
 ```
 User: "Show me all test data"
@@ -156,11 +207,15 @@ Assistant: [Creates a new tag for test organization]
 
 ### Available Tools
 
-- **Test Management**: `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_test`
-- **Test Run Management**: `list_test_runs`, `get_test_run`, `create_test_run`, `delete_test_run`
+- **Test Management**: `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_tests`
+- **Test Run Management**: `list_test_runs`, `get_test_run`,  `delete_test_run`
+- **Test Run Group Management**: `list_test_run_groups`, `get_test_run_group`, `create_test_run_group`, `delete_test_run_group`, `cancel_test_run_group`, `download_test_run_group_report`, `download_test_run_group_attachments`
 - **Environment Management**: `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
 - **Test Data Management**: `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
 - **Tag Management**: `list_tags`, `get_tag`, `create_tags`, `update_tag`, `delete_tag`
+- **Test Report Schedule Management**: `list_test_report_schedules`, `get_test_report_schedule`, `create_test_report_schedule`, `update_test_report_schedule`, `delete_test_report_schedule`
+- **Notification Channel Management**: `list_notification_channels`, `get_notification_channel`, `create_notification_channel`, `update_notification_channel`, `delete_notification_channel`, `remove_notification_config`
+- **Test Report Run Management**: `list_test_report_runs`, `get_test_report_run`, `delete_test_report_run`, `download_test_report`
 
 ### Available Resources
 
@@ -168,12 +223,20 @@ Assistant: [Creates a new tag for test organization]
 - `test://{test_id}` - View specific test details
 - `test-runs://` - Browse all test runs
 - `test-run://{test_run_id}` - View specific test run details
+- `test-run-groups://list` - Browse all test run groups
+- `test-run-group://{test_run_group_id}` - View specific test run group details
 - `environments://` - Browse all environments
 - `environment://{environment_id}` - View specific environment details
 - `test-data://` - Browse all test data
 - `test-data://{test_data_id}` - View specific test data details
 - `tags://` - Browse all tags
 - `tag://{tag_id}` - View specific tag details
+- `test-report-schedules://list` - Browse all test report schedules
+- `test-report-schedule://{schedule_id}` - View specific test report schedule details
+- `notification-channels://list` - Browse all notification channels
+- `notification-channel://{channel_id}` - View specific notification channel details
+- `test-report-runs://list` - Browse all test report runs
+- `test-report-run://{report_id}` - View specific test report run details
 
 ## Development
 
@@ -296,6 +359,10 @@ The implementation focuses purely on TestZeus business logic without MCP protoco
 | Environments | `environment://id` | Test environment configurations |
 | Test Data | `test-data://id` | Test datasets and fixtures |
 | Tags | `tag://id` | Test organization tags |
+| Test Run Groups | `test-run-group://id` | Grouped test execution instances |
+| Test Report Schedules | `test-report-schedule://id` | Automated test report schedules |
+| Notification Channels | `notification-channel://id` | Notification configurations |
+| Test Report Runs | `test-report-run://id` | Generated test reports |
 
 ## Troubleshooting
 
@@ -342,6 +409,7 @@ The server provides detailed error messages for common issues:
 - **fastmcp**: Modern MCP server framework
 - **aiohttp**: Async HTTP client
 - **pydantic**: Data validation
+- **httpx**: HTTP client for file downloads
 
 ## License
 
@@ -351,10 +419,30 @@ MIT License - see LICENSE file for details.
 
 Traditional tool-only approaches require users to know exactly what tools to call. With MCP resources:
 
-- **Discoverable**: Browse available tests like files in a directory
-- **Contextual**: See test details before deciding what to do
-- **Natural**: "Show me my tests" instead of "call list_tests tool"
-- **Rich**: Complete entity information, not just IDs
+- **Discoverable**: Browse available tests, schedules, reports, and configurations like files in a directory
+- **Contextual**: See complete entity details before deciding what actions to take
+- **Natural**: "Show me my test reports" instead of "call list_test_report_runs tool"
+- **Rich**: Complete entity information including relationships, status, and metadata
 - **Real-time**: Always current with your TestZeus account
+- **Comprehensive**: Access to the full TestZeus ecosystem including advanced features like scheduling and notifications
 
-This makes TestZeus truly conversational and intuitive to use with AI assistants. 
+This makes TestZeus truly conversational and intuitive to use with AI assistants, enabling complex test management workflows through natural language. 
+
+
+### Troubleshoots
+
+1. install lib if not working : uv add python-dateutil
+2. for dev add sdk file : "testzeus-sdk @ file:///path_to_dir/testzeus-sdk", and add to pyproject 
+```bash
+[tool.hatch.metadata]
+allow-direct-references = true
+```
+then run 
+```bash
+rm -rf .venv
+uv sync
+```
+then check `uv run python -c "import testzeus_sdk; print(testzeus_sdk.__file__)"`
+
+3. If you only want local dev linking (editable mode), bypass pyproject dependency altogether
+`uv pip install -e /path/to/testzeus-sdk`
