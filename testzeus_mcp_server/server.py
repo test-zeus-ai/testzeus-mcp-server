@@ -66,7 +66,9 @@ async def authenticate_testzeus(
         return error_msg
 
     try:
-        testzeus_client = TestZeusClient(email=email, password=password, base_url=os.getenv("TESTZEUS_BASE_URL"))
+        testzeus_client = TestZeusClient(
+            email=email, password=password, base_url=os.getenv("TESTZEUS_BASE_URL")
+        )
         await testzeus_client.ensure_authenticated()
 
         if ctx:
@@ -363,7 +365,9 @@ async def get_test_run(test_run_id: str, ctx: Context = None) -> str:
         if ctx:
             await ctx.info(f"Retrieved test run: {details}")
 
-        return f"Test run details:\n{json.dumps(details, cls=DateTimeEncoder, indent=2)}"
+        return (
+            f"Test run details:\n{json.dumps(details, cls=DateTimeEncoder, indent=2)}"
+        )
     except Exception as e:
         error_msg = f"Error getting test run: {str(e)}"
         if ctx:
@@ -586,7 +590,9 @@ async def remove_all_environment_files(environment_id: str, ctx: Context = None)
 
 
 @mcp.tool()
-async def add_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
+async def add_environment_file(
+    environment_id: str, file_path: str, ctx: Context = None
+) -> str:
     """Add a environment file."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -604,7 +610,9 @@ async def add_environment_file(environment_id: str, file_path: str, ctx: Context
 
 
 @mcp.tool()
-async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
+async def remove_environment_file(
+    environment_id: str, file_path: str, ctx: Context = None
+) -> str:
     """Remove a environment file."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -827,7 +835,9 @@ async def remove_all_test_data_files(test_data_id: str, ctx: Context = None) -> 
 
 
 @mcp.tool()
-async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
+async def add_test_data_file(
+    test_data_id: str, file_path: str, ctx: Context = None
+) -> str:
     """Add a test data file."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -845,7 +855,9 @@ async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = N
 
 
 @mcp.tool()
-async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
+async def remove_test_data_file(
+    test_data_id: str, file_path: str, ctx: Context = None
+) -> str:
     """Remove a test data file."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1064,7 +1076,9 @@ async def list_test_run_groups(
 
 
 @mcp.tool()
-async def get_test_run_group(test_run_group_id_or_name: str, ctx: Context = None) -> str:
+async def get_test_run_group(
+    test_run_group_id_or_name: str, ctx: Context = None
+) -> str:
     """Get a specific test run group by ID or name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1138,7 +1152,9 @@ async def create_test_run_group(
 
 
 @mcp.tool()
-async def delete_test_run_group(test_run_group_id_or_name: str, ctx: Context = None) -> str:
+async def delete_test_run_group(
+    test_run_group_id_or_name: str, ctx: Context = None
+) -> str:
     """Delete a test run group (sets status to deleted)."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1158,13 +1174,17 @@ async def delete_test_run_group(test_run_group_id_or_name: str, ctx: Context = N
 
 
 @mcp.tool()
-async def cancel_test_run_group(test_run_group_id_or_name: str, ctx: Context = None) -> str:
+async def cancel_test_run_group(
+    test_run_group_id_or_name: str, ctx: Context = None
+) -> str:
     """Cancel all running test runs in a test run group."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        group = await testzeus_client.test_run_groups.cancel_group(test_run_group_id_or_name)
+        group = await testzeus_client.test_run_groups.cancel_group(
+            test_run_group_id_or_name
+        )
 
         if ctx:
             await ctx.info(f"Cancelled test run group: {test_run_group_id_or_name}")
@@ -1195,10 +1215,14 @@ async def download_test_run_group_report(
 
         if file_path:
             if ctx:
-                await ctx.info(f"Downloaded report for test run group: {test_run_group_id_or_name}")
+                await ctx.info(
+                    f"Downloaded report for test run group: {test_run_group_id_or_name}"
+                )
             return f"Successfully downloaded report to: {file_path}"
         else:
-            return f"No report available for test run group '{test_run_group_id_or_name}'"
+            return (
+                f"No report available for test run group '{test_run_group_id_or_name}'"
+            )
 
     except Exception as e:
         error_msg = f"Error downloading test run group report: {str(e)}"
@@ -1218,20 +1242,24 @@ async def download_test_run_group_attachments(
         await authenticate_testzeus()
 
     try:
-        downloaded_attachments = await testzeus_client.test_run_groups.download_all_attachments(
-            test_run_group_id_or_name, output_dir
+        downloaded_attachments = (
+            await testzeus_client.test_run_groups.download_all_attachments(
+                test_run_group_id_or_name, output_dir
+            )
         )
 
         total_files = sum(len(files) for files in downloaded_attachments.values())
-        
+
         if ctx:
-            await ctx.info(f"Downloaded {total_files} attachments for test run group: {test_run_group_id_or_name}")
+            await ctx.info(
+                f"Downloaded {total_files} attachments for test run group: {test_run_group_id_or_name}"
+            )
 
         result = {
             "test_run_group": test_run_group_id_or_name,
             "total_files_downloaded": total_files,
             "downloads_by_test_run": downloaded_attachments,
-            "output_directory": output_dir
+            "output_directory": output_dir,
         }
 
         return f"Downloaded attachments for test run group:\n{json.dumps(result, indent=2)}"
@@ -1571,6 +1599,7 @@ async def get_test_run_group_resource(test_run_group_id: str) -> str:
 # TEST REPORT SCHEDULE OPERATIONS
 # ============================================================================
 
+
 @mcp.tool()
 async def list_test_report_schedules(
     page: int = 1,
@@ -1582,7 +1611,7 @@ async def list_test_report_schedules(
     """List all test report schedules in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1608,15 +1637,23 @@ async def list_test_report_schedules(
                     "name": schedule.name,
                     "is_active": getattr(schedule, "is_active", False),
                     "cron_expression": getattr(schedule, "cron_expression", None),
-                    "filter_name_pattern": getattr(schedule, "filter_name_pattern", None),
-                    "filter_time_intervals": getattr(schedule, "filter_time_intervals", None),
+                    "filter_name_pattern": getattr(
+                        schedule, "filter_name_pattern", None
+                    ),
+                    "filter_time_intervals": getattr(
+                        schedule, "filter_time_intervals", None
+                    ),
                     "filter_tags": getattr(schedule, "filter_tags", []),
                     "filter_tag_pattern": getattr(schedule, "filter_tag_pattern", None),
                     "filter_env": getattr(schedule, "filter_env", []),
                     "filter_env_pattern": getattr(schedule, "filter_env_pattern", None),
                     "filter_test_data": getattr(schedule, "filter_test_data", []),
-                    "filter_test_data_pattern": getattr(schedule, "filter_test_data_pattern", None),
-                    "notification_channels": getattr(schedule, "notification_channels", []),
+                    "filter_test_data_pattern": getattr(
+                        schedule, "filter_test_data_pattern", None
+                    ),
+                    "notification_channels": getattr(
+                        schedule, "notification_channels", []
+                    ),
                     "created": str(schedule.created),
                     "updated": str(schedule.updated),
                 }
@@ -1643,11 +1680,13 @@ async def list_test_report_schedules(
 
 
 @mcp.tool()
-async def get_test_report_schedule(schedule_id_or_name: str, ctx: Context = None) -> str:
+async def get_test_report_schedule(
+    schedule_id_or_name: str, ctx: Context = None
+) -> str:
     """Get a specific test report schedule by ID or name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1656,7 +1695,9 @@ async def get_test_report_schedule(schedule_id_or_name: str, ctx: Context = None
         return error_msg
 
     try:
-        schedule = await testzeus_client.test_report_schedules.get_one(schedule_id_or_name)
+        schedule = await testzeus_client.test_report_schedules.get_one(
+            schedule_id_or_name
+        )
         schedule_data = {
             "id": schedule.id,
             "name": schedule.name,
@@ -1669,7 +1710,9 @@ async def get_test_report_schedule(schedule_id_or_name: str, ctx: Context = None
             "filter_env": getattr(schedule, "filter_env", []),
             "filter_env_pattern": getattr(schedule, "filter_env_pattern", None),
             "filter_test_data": getattr(schedule, "filter_test_data", []),
-            "filter_test_data_pattern": getattr(schedule, "filter_test_data_pattern", None),
+            "filter_test_data_pattern": getattr(
+                schedule, "filter_test_data_pattern", None
+            ),
             "notification_channels": getattr(schedule, "notification_channels", []),
             "created": str(schedule.created),
             "updated": str(schedule.updated),
@@ -1706,7 +1749,7 @@ async def create_test_report_schedule(
 ) -> str:
     """
     Create a new test report schedule.
-    
+
     Args:
         name: Name of the test report schedule
         is_active: Set as active test report schedule (default: True)
@@ -1721,13 +1764,13 @@ async def create_test_report_schedule(
         filter_test_data: Filter using test data names (mutually exclusive with filter_test_data_pattern)
         filter_test_data_pattern: Filter test data pattern (mutually exclusive with filter_test_data)
         notification_channels: List of notification channel names
-    
+
     Returns:
         JSON string with created schedule details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1736,19 +1779,21 @@ async def create_test_report_schedule(
         return error_msg
 
     try:
-        schedule = await testzeus_client.test_report_schedules.create_test_report_schedule(
-            name=name,
-            is_active=is_active,
-            filter_name_pattern=filter_name_pattern,
-            filter_time_intervals=filter_time_intervals,
-            cron_expression=cron_expression,
-            filter_tags=filter_tags,
-            filter_tag_pattern=filter_tag_pattern,
-            filter_env=filter_env,
-            filter_env_pattern=filter_env_pattern,
-            filter_test_data=filter_test_data,
-            filter_test_data_pattern=filter_test_data_pattern,
-            notification_channels=notification_channels,
+        schedule = (
+            await testzeus_client.test_report_schedules.create_test_report_schedule(
+                name=name,
+                is_active=is_active,
+                filter_name_pattern=filter_name_pattern,
+                filter_time_intervals=filter_time_intervals,
+                cron_expression=cron_expression,
+                filter_tags=filter_tags,
+                filter_tag_pattern=filter_tag_pattern,
+                filter_env=filter_env,
+                filter_env_pattern=filter_env_pattern,
+                filter_test_data=filter_test_data,
+                filter_test_data_pattern=filter_test_data_pattern,
+                notification_channels=notification_channels,
+            )
         )
 
         schedule_data = {
@@ -1788,7 +1833,7 @@ async def update_test_report_schedule(
 ) -> str:
     """
     Update an existing test report schedule.
-    
+
     Args:
         schedule_id_or_name: ID or name of the test report schedule to update
         name: New name for the schedule
@@ -1803,13 +1848,13 @@ async def update_test_report_schedule(
         filter_test_data: Filter using test data names (mutually exclusive with filter_test_data_pattern)
         filter_test_data_pattern: Filter test data pattern (mutually exclusive with filter_test_data)
         notification_channels: List of notification channel names
-    
+
     Returns:
         JSON string with updated schedule details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1818,20 +1863,22 @@ async def update_test_report_schedule(
         return error_msg
 
     try:
-        schedule = await testzeus_client.test_report_schedules.update_test_report_schedule(
-            id_or_name=schedule_id_or_name,
-            name=name,
-            is_active=is_active,
-            filter_name_pattern=filter_name_pattern,
-            filter_time_intervals=filter_time_intervals,
-            cron_expression=cron_expression,
-            filter_tags=filter_tags,
-            filter_tag_pattern=filter_tag_pattern,
-            filter_env=filter_env,
-            filter_env_pattern=filter_env_pattern,
-            filter_test_data=filter_test_data,
-            filter_test_data_pattern=filter_test_data_pattern,
-            notification_channels=notification_channels,
+        schedule = (
+            await testzeus_client.test_report_schedules.update_test_report_schedule(
+                id_or_name=schedule_id_or_name,
+                name=name,
+                is_active=is_active,
+                filter_name_pattern=filter_name_pattern,
+                filter_time_intervals=filter_time_intervals,
+                cron_expression=cron_expression,
+                filter_tags=filter_tags,
+                filter_tag_pattern=filter_tag_pattern,
+                filter_env=filter_env,
+                filter_env_pattern=filter_env_pattern,
+                filter_test_data=filter_test_data,
+                filter_test_data_pattern=filter_test_data_pattern,
+                notification_channels=notification_channels,
+            )
         )
 
         schedule_data = {
@@ -1853,11 +1900,13 @@ async def update_test_report_schedule(
 
 
 @mcp.tool()
-async def delete_test_report_schedule(schedule_id_or_name: str, ctx: Context = None) -> str:
+async def delete_test_report_schedule(
+    schedule_id_or_name: str, ctx: Context = None
+) -> str:
     """Delete a test report schedule (sets status to deleted)."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1872,7 +1921,9 @@ async def delete_test_report_schedule(schedule_id_or_name: str, ctx: Context = N
             await ctx.info(f"Deleted test report schedule: {schedule_id_or_name}")
 
         return json.dumps(
-            {"message": f"Test report schedule {schedule_id_or_name} deleted successfully"},
+            {
+                "message": f"Test report schedule {schedule_id_or_name} deleted successfully"
+            },
             indent=2,
         )
     except Exception as e:
@@ -1886,6 +1937,7 @@ async def delete_test_report_schedule(schedule_id_or_name: str, ctx: Context = N
 # TEST REPORT RUN OPERATIONS
 # ============================================================================
 
+
 @mcp.tool()
 async def list_test_report_runs(
     page: int = 1,
@@ -1897,7 +1949,7 @@ async def list_test_report_runs(
     """List all test report runs in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1923,7 +1975,9 @@ async def list_test_report_runs(
                     "name": report.display_name,
                     "status": report.status,
                     "end_time": str(getattr(report, "end_time", None)),
-                    "ctrf_report_findings": getattr(report, "ctrf_report_findings", None),
+                    "ctrf_report_findings": getattr(
+                        report, "ctrf_report_findings", None
+                    ),
                     "created": str(report.created),
                     "updated": str(report.updated),
                 }
@@ -1954,7 +2008,7 @@ async def get_test_report_run(report_id_or_name: str, ctx: Context = None) -> st
     """Get a specific test report run by ID or name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -1999,7 +2053,7 @@ async def delete_test_report_run(report_id_or_name: str, ctx: Context = None) ->
     """Delete a test report run."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2033,18 +2087,18 @@ async def download_test_report(
 ) -> str:
     """
     Download a test report file.
-    
+
     Args:
         report_id_or_name: ID or name of the test report run
         output_dir: Directory to save the downloaded file (default: "downloads")
         format: Report format to download ("ctrf", "pdf", "csv", or "zip")
-    
+
     Returns:
         JSON string with download details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2080,7 +2134,9 @@ async def download_test_report(
         }
 
         if ctx:
-            await ctx.info(f"Downloaded {format} report for {report_id_or_name} to {file_path}")
+            await ctx.info(
+                f"Downloaded {format} report for {report_id_or_name} to {file_path}"
+            )
 
         return json.dumps(download_data, indent=2)
     except Exception as e:
@@ -2094,15 +2150,18 @@ async def download_test_report(
 # TEST REPORT RUN RESOURCES
 # ============================================================================
 
+
 @mcp.resource("test-report-runs://list")
 async def list_test_report_runs_resource() -> str:
     """List all test report runs as a browsable resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         result = await testzeus_client.test_report_runs.get_list(per_page=100)
@@ -2136,10 +2195,12 @@ async def get_test_report_run_resource(report_id: str) -> str:
     """Get a specific test report run as a resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         report = await testzeus_client.test_report_runs.get_one(report_id)
@@ -2173,6 +2234,7 @@ async def get_test_report_run_resource(report_id: str) -> str:
 # NOTIFICATION CHANNEL OPERATIONS
 # ============================================================================
 
+
 @mcp.tool()
 async def list_notification_channels(
     page: int = 1,
@@ -2184,7 +2246,7 @@ async def list_notification_channels(
     """List all notification channels in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2243,7 +2305,7 @@ async def get_notification_channel(channel_id_or_name: str, ctx: Context = None)
     """Get a specific notification channel by ID or name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2252,7 +2314,9 @@ async def get_notification_channel(channel_id_or_name: str, ctx: Context = None)
         return error_msg
 
     try:
-        channel = await testzeus_client.notification_channels.get_one(channel_id_or_name)
+        channel = await testzeus_client.notification_channels.get_one(
+            channel_id_or_name
+        )
         channel_data = {
             "id": channel.id,
             "name": getattr(channel, "name", None),
@@ -2267,7 +2331,9 @@ async def get_notification_channel(channel_id_or_name: str, ctx: Context = None)
         }
 
         if ctx:
-            await ctx.info(f"Retrieved notification channel: {getattr(channel, 'name', channel.id)}")
+            await ctx.info(
+                f"Retrieved notification channel: {getattr(channel, 'name', channel.id)}"
+            )
 
         return json.dumps(channel_data, indent=2, cls=DateTimeEncoder)
     except Exception as e:
@@ -2288,20 +2354,20 @@ async def create_notification_channel(
 ) -> str:
     """
     Create a new notification channel.
-    
+
     Args:
         name: Name of the notification channel
         emails: List of email addresses (required)
         webhooks: List of webhook URLs (optional)
         is_active: Set as active notification channel (default: True)
         is_default: Set as default notification channel (default: True)
-    
+
     Returns:
         JSON string with created channel details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2310,13 +2376,15 @@ async def create_notification_channel(
         return error_msg
 
     try:
-        channel = await testzeus_client.notification_channels.create_notification_channel(
-            name=f"{name}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            display_name=name,
-            emails=emails,
-            webhooks=webhooks,
-            is_active=is_active,
-            is_default=is_default,
+        channel = (
+            await testzeus_client.notification_channels.create_notification_channel(
+                name=f"{name}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                display_name=name,
+                emails=emails,
+                webhooks=webhooks,
+                is_active=is_active,
+                is_default=is_default,
+            )
         )
 
         channel_data = {
@@ -2329,7 +2397,9 @@ async def create_notification_channel(
         }
 
         if ctx:
-            await ctx.info(f"Created notification channel: {getattr(channel, 'name', channel.id)}")
+            await ctx.info(
+                f"Created notification channel: {getattr(channel, 'name', channel.id)}"
+            )
 
         return json.dumps(channel_data, indent=2, cls=DateTimeEncoder)
     except Exception as e:
@@ -2351,7 +2421,7 @@ async def update_notification_channel(
 ) -> str:
     """
     Update an existing notification channel.
-    
+
     Args:
         channel_id_or_name: ID or name of the notification channel to update
         name: New name for the channel
@@ -2359,13 +2429,13 @@ async def update_notification_channel(
         webhooks: List of webhook URLs
         is_active: Set as active/inactive
         is_default: Set as default/non-default
-    
+
     Returns:
         JSON string with updated channel details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2374,14 +2444,16 @@ async def update_notification_channel(
         return error_msg
 
     try:
-        channel = await testzeus_client.notification_channels.update_notification_channel(
-            id_or_name=channel_id_or_name,
-            name=f"{name}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            display_name=name,
-            emails=emails,
-            webhooks=webhooks,
-            is_active=is_active,
-            is_default=is_default,
+        channel = (
+            await testzeus_client.notification_channels.update_notification_channel(
+                id_or_name=channel_id_or_name,
+                name=f"{name}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                display_name=name,
+                emails=emails,
+                webhooks=webhooks,
+                is_active=is_active,
+                is_default=is_default,
+            )
         )
 
         channel_data = {
@@ -2394,7 +2466,9 @@ async def update_notification_channel(
         }
 
         if ctx:
-            await ctx.info(f"Updated notification channel: {getattr(channel, 'name', channel.id)}")
+            await ctx.info(
+                f"Updated notification channel: {getattr(channel, 'name', channel.id)}"
+            )
 
         return json.dumps(channel_data, indent=2, cls=DateTimeEncoder)
     except Exception as e:
@@ -2405,11 +2479,13 @@ async def update_notification_channel(
 
 
 @mcp.tool()
-async def delete_notification_channel(channel_id_or_name: str, ctx: Context = None) -> str:
+async def delete_notification_channel(
+    channel_id_or_name: str, ctx: Context = None
+) -> str:
     """Delete a notification channel."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2424,7 +2500,9 @@ async def delete_notification_channel(channel_id_or_name: str, ctx: Context = No
             await ctx.info(f"Deleted notification channel: {channel_id_or_name}")
 
         return json.dumps(
-            {"message": f"Notification channel {channel_id_or_name} deleted successfully"},
+            {
+                "message": f"Notification channel {channel_id_or_name} deleted successfully"
+            },
             indent=2,
         )
     except Exception as e:
@@ -2442,17 +2520,17 @@ async def remove_notification_config(
 ) -> str:
     """
     Remove a configuration from a notification channel.
-    
+
     Args:
         channel_id_or_name: ID or name of the notification channel
         config_type: Type of configuration to remove ('webhook' or 'slack')
-    
+
     Returns:
         JSON string with updated channel details
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
         error_msg = "Authentication failed - unable to connect to TestZeus"
@@ -2480,7 +2558,9 @@ async def remove_notification_config(
         }
 
         if ctx:
-            await ctx.info(f"Removed {config_type} config from notification channel: {getattr(channel, 'name', channel.id)}")
+            await ctx.info(
+                f"Removed {config_type} config from notification channel: {getattr(channel, 'name', channel.id)}"
+            )
 
         return json.dumps(channel_data, indent=2, cls=DateTimeEncoder)
     except Exception as e:
@@ -2494,15 +2574,18 @@ async def remove_notification_config(
 # NOTIFICATION CHANNEL RESOURCES
 # ============================================================================
 
+
 @mcp.resource("notification-channels://list")
 async def list_notification_channels_resource() -> str:
     """List all notification channels as a browsable resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         result = await testzeus_client.notification_channels.get_list(per_page=100)
@@ -2533,10 +2616,12 @@ async def get_notification_channel_resource(channel_id: str) -> str:
     """Get a specific notification channel as a resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         channel = await testzeus_client.notification_channels.get_one(channel_id)
@@ -2562,15 +2647,18 @@ async def get_notification_channel_resource(channel_id: str) -> str:
 # TEST REPORT SCHEDULE RESOURCES
 # ============================================================================
 
+
 @mcp.resource("test-report-schedules://list")
 async def list_test_report_schedules_resource() -> str:
     """List all test report schedules as a browsable resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         result = await testzeus_client.test_report_schedules.get_list(per_page=100)
@@ -2589,8 +2677,12 @@ async def list_test_report_schedules_resource() -> str:
                     "filter_env": getattr(schedule, "filter_env", []),
                     "filter_env_pattern": getattr(schedule, "filter_env_pattern", None),
                     "filter_test_data": getattr(schedule, "filter_test_data", []),
-                    "filter_test_data_pattern": getattr(schedule, "filter_test_data_pattern", None),
-                    "notification_channels": getattr(schedule, "notification_channels", []),
+                    "filter_test_data_pattern": getattr(
+                        schedule, "filter_test_data_pattern", None
+                    ),
+                    "notification_channels": getattr(
+                        schedule, "notification_channels", []
+                    ),
                     "uri": f"test-report-schedule://{schedule.id}",
                 }
             )
@@ -2605,10 +2697,12 @@ async def get_test_report_schedule_resource(schedule_id: str) -> str:
     """Get a specific test report schedule as a resource."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
-    
+
     # Check if authentication was successful
     if testzeus_client is None:
-        return json.dumps({"error": "Authentication failed - unable to connect to TestZeus"})
+        return json.dumps(
+            {"error": "Authentication failed - unable to connect to TestZeus"}
+        )
 
     try:
         schedule = await testzeus_client.test_report_schedules.get_one(schedule_id)
@@ -2624,7 +2718,9 @@ async def get_test_report_schedule_resource(schedule_id: str) -> str:
             "filter_env": getattr(schedule, "filter_env", []),
             "filter_env_pattern": getattr(schedule, "filter_env_pattern", None),
             "filter_test_data": getattr(schedule, "filter_test_data", []),
-            "filter_test_data_pattern": getattr(schedule, "filter_test_data_pattern", None),
+            "filter_test_data_pattern": getattr(
+                schedule, "filter_test_data_pattern", None
+            ),
             "notification_channels": getattr(schedule, "notification_channels", []),
             "created": str(schedule.created),
             "updated": str(schedule.updated),
