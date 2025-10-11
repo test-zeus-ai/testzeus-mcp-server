@@ -2120,7 +2120,10 @@ async def download_test_report(
         )
 
         if file_path is None:
-            error_msg = f"Test report run {report_id_or_name} is not completed or report not available"
+            error_msg = (
+                f"Test report run {report_id_or_name} is not completed "
+                f"or report not available"
+            )
             if ctx:
                 await ctx.error(error_msg)
             return error_msg
