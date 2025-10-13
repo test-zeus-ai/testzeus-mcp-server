@@ -15,6 +15,7 @@ dependencies = [
     "fastmcp>=2.0.0",
     "testzeus-sdk>=0.0.10",
     "aiohttp>=3.8.0",
+    "python-dateutil>=2.9.0.post0",
 ]
 
 [project.optional-dependencies]
