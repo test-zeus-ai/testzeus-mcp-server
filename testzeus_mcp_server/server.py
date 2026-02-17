@@ -246,7 +246,7 @@ async def update_test(
             data["tags"] = tags
         if environment:
             data["environment"] = environment
-        if connected_environment:
+        if connected_environment is not None:
             data["connected_environment"] = connected_environment
         # Hardcode execution_mode to lenient
         data["execution_mode"] = "lenient"

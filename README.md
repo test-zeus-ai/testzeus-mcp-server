@@ -208,7 +208,7 @@ Assistant: [Creates a new tag for test organization]
 ```
 
 #### Managing Connected Environments
-```
+```text
 User: "List all connected environments"
 Assistant: [Shows all external service connections]
 
@@ -220,7 +220,7 @@ Assistant: [Updates test to use the connected environment]
 ```
 
 #### Managing Hypermind Code Blocks
-```
+```text
 User: "Create a code block for authentication helpers"
 Assistant: [Creates a reusable code block]
 
@@ -232,7 +232,7 @@ Assistant: [Shows all available hypermind code blocks]
 ```
 
 #### Viewing User Integrations
-```
+```text
 User: "Show me all my integrations"
 Assistant: [Lists all external service connections]
 
