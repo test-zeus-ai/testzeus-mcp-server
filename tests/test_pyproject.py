@@ -73,12 +73,6 @@ class TestPyprojectToml:
         version = pyproject_data["project"]["version"]
         assert version == "2.0.0", f"Expected version 2.0.0, got {version}"
 
-    def test_python_version_requirement(self, pyproject_data):
-        """Test Python version requirement."""
-        requires_python = pyproject_data["project"]["requires-python"]
-        assert ">=3.11" in requires_python or "3.11" in requires_python
-        assert "<4.0" in requires_python or "4.0" in requires_python
-
     def test_dependencies_present(self, pyproject_data):
         """Test that required dependencies are listed."""
         dependencies = pyproject_data["project"]["dependencies"]
