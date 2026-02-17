@@ -3,6 +3,20 @@ TestZeus FastMCP Server - Modern MCP server implementation for TestZeus SDK.
 
 This module provides a FastMCP-based server that exposes TestZeus SDK
 functionality to MCP clients like Claude Desktop in a clean, modern way.
+
+Key Features:
+- Test Management: Create, update, delete, and execute tests
+- Environment Management: Manage test environments and connected environments
+- Test Data Management: Handle test data and supporting files
+- Hypermind Code Blocks: Manage reusable code blocks for tests
+- User Integrations: Access user integration configurations
+- Test Run Groups: Execute and monitor test runs
+- Test Report Schedules: Schedule and manage test reports
+- Notification Channels: Configure notification channels for test results
+- Tags: Organize tests with tags
+
+All execution modes are hardcoded to 'lenient' for consistent behavior.
+Connected environments can be linked to both tests and environments for enhanced integration.
 """
 
 import json
@@ -172,7 +186,7 @@ async def create_test(
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
-    execution_mode: Literal["lenient", "strict"] = "lenient",
+    connected_environment: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
     """Create a new test in TestZeus."""
@@ -187,7 +201,8 @@ async def create_test(
             test_data=test_data,
             tags=tags,
             environment=environment,
-            execution_mode=execution_mode,
+            connected_environment=connected_environment,
+            execution_mode="lenient",  # Hardcoded to lenient
         )
 
         if ctx:
@@ -210,7 +225,7 @@ async def update_test(
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
-    execution_mode: Literal["lenient", "strict"] = "lenient",
+    connected_environment: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
     """Update an existing test in TestZeus."""
@@ -229,10 +244,13 @@ async def update_test(
             data["test_data"] = test_data
         if tags:
             data["tags"] = tags
-        if execution_mode:
-            data["execution_mode"] = execution_mode
         if environment:
             data["environment"] = environment
+        if connected_environment:
+            data["connected_environment"] = connected_environment
+        # Hardcode execution_mode to lenient
+        data["execution_mode"] = "lenient"
+        
         test = await testzeus_client.tests.update_test(test_id_or_name, **data)
 
         if ctx:
@@ -273,7 +291,6 @@ async def run_test(
     environment: str | None = None,
     tags: list[str] | None = None,
     notification_channels: list[str] | None = None,
-    execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
 ) -> str:
     """Execute tests and start a test run group."""
@@ -287,7 +304,7 @@ async def run_test(
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,
-            execution_mode=execution_mode,
+            execution_mode="lenient",  # Hardcoded to lenient
             environment=environment,
             tags=tags,
             notification_channels=notification_channels,
@@ -481,6 +498,7 @@ async def create_environment(
     status: Literal["draft", "ready", "deleted"] = "draft",
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
+    connected_environments: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
     """Create a new environment."""
@@ -494,6 +512,7 @@ async def create_environment(
             status=status,
             tags=tags,
             supporting_data_files=supporting_data_files,
+            connected_environments=connected_environments,
         )
 
         if ctx:
@@ -515,6 +534,7 @@ async def update_environment(
     status: Literal["draft", "ready", "deleted"] | None = None,
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
+    connected_environments: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
     """Update an environment."""
@@ -533,6 +553,8 @@ async def update_environment(
             data["tags"] = tags
         if supporting_data_files:
             data["supporting_data_files"] = supporting_data_files
+        if connected_environments:
+            data["connected_environments"] = connected_environments
 
         await testzeus_client.environments.update_environment(environment_id, **data)
 
@@ -864,6 +886,485 @@ async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context 
         return error_msg
 
 
+# ============================================================================
+# HYPERMIND CODE BLOCKS OPERATIONS
+# ============================================================================
+
+
+@mcp.tool()
+async def list_hypermind_code_blocks(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all hypermind code blocks in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        per_page = min(per_page, 100)
+        params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.hypermind_code_blocks.get_list(**params)
+        code_blocks = result.get("items", [])
+
+        code_block_list = []
+        for block in code_blocks:
+            code_block_list.append(
+                {
+                    "id": block.id,
+                    "name": block.name,
+                    "status": block.status,
+                    "tags": block.tags,
+                    "code_files": block.code_files,
+                    "created": str(block.created),
+                    "updated": str(block.updated),
+                }
+            )
+
+        if ctx:
+            await ctx.info(f"Found {len(code_block_list)} hypermind code blocks")
+
+        return f"Found {len(code_block_list)} hypermind code blocks:\n{json.dumps(code_block_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing hypermind code blocks: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_hypermind_code_block(code_block_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific hypermind code block by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        block = await testzeus_client.hypermind_code_blocks.get_one(code_block_id_or_name)
+        block_data = {
+            "id": block.id,
+            "name": block.name,
+            "status": block.status,
+            "tags": block.tags,
+            "code_files": block.code_files,
+            "created": str(block.created),
+            "updated": str(block.updated),
+            "tenant": block.tenant,
+            "modified_by": block.modified_by,
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved hypermind code block: {block.name}")
+
+        return f"Hypermind code block details:\n{json.dumps(block_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_hypermind_code_block(
+    name: str,
+    status: Literal["draft", "ready", "deleted"] = "draft",
+    tags: list[str] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        block = await testzeus_client.hypermind_code_blocks.create_hypermind_code_block(
+            name=name,
+            status=status,
+            tags=tags,
+        )
+
+        if ctx:
+            await ctx.info(f"Created hypermind code block: {name}")
+
+        return f"Successfully created hypermind code block '{name}' with ID: {block.id}"
+    except Exception as e:
+        error_msg = f"Error creating hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_hypermind_code_block(
+    code_block_id: str,
+    name: str | None = None,
+    status: Literal["draft", "ready", "deleted"] | None = None,
+    tags: list[str] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update a hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        data = {}
+        if name:
+            data["name"] = name
+        if status:
+            data["status"] = status
+        if tags:
+            data["tags"] = tags
+
+        await testzeus_client.hypermind_code_blocks.update_hypermind_code_block(code_block_id, **data)
+
+        if ctx:
+            await ctx.info(f"Updated hypermind code block: {code_block_id}")
+
+        return f"Successfully updated hypermind code block with ID: {code_block_id}"
+    except Exception as e:
+        error_msg = f"Error updating hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_hypermind_code_block(code_block_id: str, ctx: Context = None) -> str:
+    """Delete a hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.hypermind_code_blocks.delete(code_block_id)
+
+        if ctx:
+            await ctx.info(f"Deleted hypermind code block: {code_block_id}")
+
+        return f"Successfully deleted hypermind code block with ID: {code_block_id}"
+    except Exception as e:
+        error_msg = f"Error deleting hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def add_hypermind_code_block_file(
+    code_block_id: str, file_path: str, ctx: Context = None
+) -> str:
+    """Add a code file to a hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.hypermind_code_blocks.add_file(code_block_id, file_path)
+        if ctx:
+            await ctx.info(f"Added file to hypermind code block: {code_block_id}")
+        return f"Successfully added file to hypermind code block with ID: {code_block_id}"
+    except Exception as e:
+        error_msg = f"Error adding file to hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_hypermind_code_block_file(
+    code_block_id: str, file_path: str, ctx: Context = None
+) -> str:
+    """Remove a code file from a hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.hypermind_code_blocks.remove_file(code_block_id, file_path)
+        if ctx:
+            await ctx.info(f"Removed file from hypermind code block: {code_block_id}")
+        return f"Successfully removed file from hypermind code block with ID: {code_block_id}"
+    except Exception as e:
+        error_msg = f"Error removing file from hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_all_hypermind_code_block_files(code_block_id: str, ctx: Context = None) -> str:
+    """Remove all code files from a hypermind code block."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.hypermind_code_blocks.remove_all_files(code_block_id)
+        if ctx:
+            await ctx.info(f"Removed all files from hypermind code block: {code_block_id}")
+        return f"Successfully removed all files from hypermind code block with ID: {code_block_id}"
+    except Exception as e:
+        error_msg = f"Error removing all files from hypermind code block: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ============================================================================
+# USER INTEGRATION OPERATIONS
+# ============================================================================
+
+
+@mcp.tool()
+async def list_user_integrations(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all user integrations in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        per_page = min(per_page, 100)
+        params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.user_integrations.get_list(**params)
+        integrations = result.get("items", [])
+
+        integration_list = []
+        for integration in integrations:
+            integration_list.append(
+                {
+                    "id": integration.id,
+                    "name": integration.name,
+                    "integration_type": getattr(integration, "integration_type", None),
+                    "connection_status": getattr(integration, "connection_status", None),
+                    "project_id": getattr(integration, "project_id", None),
+                    "created": str(integration.created),
+                    "updated": str(integration.updated),
+                }
+            )
+
+        if ctx:
+            await ctx.info(f"Found {len(integration_list)} user integrations")
+
+        return f"Found {len(integration_list)} user integrations:\n{json.dumps(integration_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing user integrations: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_user_integration(integration_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific user integration by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        integration = await testzeus_client.user_integrations.get_one(integration_id_or_name)
+        integration_data = {
+            "id": integration.id,
+            "name": integration.name,
+            "integration_type": getattr(integration, "integration_type", None),
+            "connection_status": getattr(integration, "connection_status", None),
+            "project_id": getattr(integration, "project_id", None),
+            "auth_config_id": getattr(integration, "auth_config_id", None),
+            "connected_account_id": getattr(integration, "connected_account_id", None),
+            "scopes": getattr(integration, "scopes", None),
+            "created": str(integration.created),
+            "updated": str(integration.updated),
+            "tenant_id": getattr(integration, "tenant_id", None),
+            "user_id": getattr(integration, "user_id", None),
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved user integration: {integration.name}")
+
+        return f"User integration details:\n{json.dumps(integration_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting user integration: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ============================================================================
+# CONNECTED ENVIRONMENT OPERATIONS
+# ============================================================================
+
+
+@mcp.tool()
+async def list_connected_environments(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all connected environments in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        per_page = min(per_page, 100)
+        params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.connected_environments.get_list(**params)
+        connected_envs = result.get("items", [])
+
+        connected_env_list = []
+        for env in connected_envs:
+            connected_env_list.append(
+                {
+                    "id": env.id,
+                    "name": env.name,
+                    "connection": getattr(env, "connection", None),
+                    "created": str(env.created),
+                    "updated": str(env.updated),
+                }
+            )
+
+        if ctx:
+            await ctx.info(f"Found {len(connected_env_list)} connected environments")
+
+        return f"Found {len(connected_env_list)} connected environments:\n{json.dumps(connected_env_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing connected environments: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_connected_environment(connected_env_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific connected environment by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        env = await testzeus_client.connected_environments.get_one(connected_env_id_or_name)
+        env_data = {
+            "id": env.id,
+            "name": env.name,
+            "connection": getattr(env, "connection", None),
+            "created": str(env.created),
+            "updated": str(env.updated),
+            "tenant": env.tenant,
+            "modified_by": env.modified_by,
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved connected environment: {env.name}")
+
+        return f"Connected environment details:\n{json.dumps(env_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting connected environment: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_connected_environment(
+    name: str,
+    connection: str | None = None,
+    tags: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        env = await testzeus_client.connected_environments.create_connected_environment(
+            name=name,
+            connection=connection,
+            tags=tags,
+            metadata=metadata,
+        )
+
+        if ctx:
+            await ctx.info(f"Created connected environment: {name}")
+
+        return f"Successfully created connected environment '{name}' with ID: {env.id}"
+    except Exception as e:
+        error_msg = f"Error creating connected environment: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_connected_environment(
+    connected_env_id: str,
+    name: str | None = None,
+    connection: str | None = None,
+    tags: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        data = {}
+        if name:
+            data["name"] = name
+        if connection:
+            data["connection"] = connection
+        if tags:
+            data["tags"] = tags
+        if metadata:
+            data["metadata"] = metadata
+
+        await testzeus_client.connected_environments.update_connected_environment(
+            connected_env_id, **data
+        )
+
+        if ctx:
+            await ctx.info(f"Updated connected environment: {connected_env_id}")
+
+        return f"Successfully updated connected environment with ID: {connected_env_id}"
+    except Exception as e:
+        error_msg = f"Error updating connected environment: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_connected_environment(connected_env_id: str, ctx: Context = None) -> str:
+    """Delete a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.connected_environments.delete(connected_env_id)
+
+        if ctx:
+            await ctx.info(f"Deleted connected environment: {connected_env_id}")
+
+        return f"Successfully deleted connected environment with ID: {connected_env_id}"
+    except Exception as e:
+        error_msg = f"Error deleting connected environment: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
 @mcp.tool()
 async def create_tags(name: str, value: str | None = None, ctx: Context = None) -> str:
     """Create a new tag."""
@@ -1105,7 +1606,6 @@ async def get_test_run_group(test_run_group_id_or_name: str, ctx: Context = None
 async def create_test_run_group(
     name: str,
     test_ids: list[str] | None = None,
-    execution_mode: Literal["lenient", "strict"] = "lenient",
     environment: str | None = None,
     tags: list[str] | None = None,
     notification_channels: list[str] | None = None,
@@ -1122,7 +1622,7 @@ async def create_test_run_group(
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,
-            execution_mode=execution_mode,
+            execution_mode="lenient",  # Hardcoded to lenient
             environment=environment,
             tags=tags,
             notification_channels=notification_channels,
@@ -1570,6 +2070,160 @@ async def get_test_run_group_resource(test_run_group_id: str) -> str:
         return json.dumps(group_data, indent=2)
     except Exception as e:
         return f"Error getting test run group: {str(e)}"
+
+
+@mcp.resource("hypermind-code-blocks://")
+async def list_hypermind_code_blocks_resource() -> str:
+    """List all hypermind code blocks as a browsable resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.hypermind_code_blocks.get_list(per_page=100)
+        code_blocks = result.get("items", [])
+
+        block_list = []
+        for block in code_blocks:
+            block_list.append(
+                {
+                    "id": block.id,
+                    "name": block.name,
+                    "status": block.status,
+                    "tags": block.tags,
+                    "files_count": len(block.code_files),
+                    "uri": f"hypermind-code-block://{block.id}",
+                }
+            )
+
+        return json.dumps({"hypermind_code_blocks": block_list}, indent=2)
+    except Exception as e:
+        return f"Error listing hypermind code blocks: {str(e)}"
+
+
+@mcp.resource("hypermind-code-block://{code_block_id}")
+async def get_hypermind_code_block_resource(code_block_id: str) -> str:
+    """Get a specific hypermind code block as a resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        block = await testzeus_client.hypermind_code_blocks.get_one(code_block_id)
+        block_data = {
+            "id": block.id,
+            "name": block.name,
+            "status": block.status,
+            "tags": block.tags,
+            "code_files": block.code_files,
+            "created": str(block.created),
+            "updated": str(block.updated),
+            "modified_by": block.modified_by,
+        }
+
+        return json.dumps(block_data, indent=2)
+    except Exception as e:
+        return f"Error getting hypermind code block: {str(e)}"
+
+
+@mcp.resource("user-integrations://")
+async def list_user_integrations_resource() -> str:
+    """List all user integrations as a browsable resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.user_integrations.get_list(per_page=100)
+        integrations = result.get("items", [])
+
+        integration_list = []
+        for integration in integrations:
+            integration_list.append(
+                {
+                    "id": integration.id,
+                    "name": integration.name,
+                    "integration_type": getattr(integration, "integration_type", None),
+                    "connection_status": getattr(integration, "connection_status", None),
+                    "uri": f"user-integration://{integration.id}",
+                }
+            )
+
+        return json.dumps({"user_integrations": integration_list}, indent=2)
+    except Exception as e:
+        return f"Error listing user integrations: {str(e)}"
+
+
+@mcp.resource("user-integration://{integration_id}")
+async def get_user_integration_resource(integration_id: str) -> str:
+    """Get a specific user integration as a resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        integration = await testzeus_client.user_integrations.get_one(integration_id)
+        integration_data = {
+            "id": integration.id,
+            "name": integration.name,
+            "integration_type": getattr(integration, "integration_type", None),
+            "connection_status": getattr(integration, "connection_status", None),
+            "project_id": getattr(integration, "project_id", None),
+            "auth_config_id": getattr(integration, "auth_config_id", None),
+            "connected_account_id": getattr(integration, "connected_account_id", None),
+            "scopes": getattr(integration, "scopes", None),
+            "created": str(integration.created),
+            "updated": str(integration.updated),
+        }
+
+        return json.dumps(integration_data, indent=2)
+    except Exception as e:
+        return f"Error getting user integration: {str(e)}"
+
+
+@mcp.resource("connected-environments://")
+async def list_connected_environments_resource() -> str:
+    """List all connected environments as a browsable resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.connected_environments.get_list(per_page=100)
+        connected_envs = result.get("items", [])
+
+        env_list = []
+        for env in connected_envs:
+            env_list.append(
+                {
+                    "id": env.id,
+                    "name": env.name,
+                    "connection": getattr(env, "connection", None),
+                    "tags": env.tags,
+                    "uri": f"connected-environment://{env.id}",
+                }
+            )
+
+        return json.dumps({"connected_environments": env_list}, indent=2)
+    except Exception as e:
+        return f"Error listing connected environments: {str(e)}"
+
+
+@mcp.resource("connected-environment://{connected_env_id}")
+async def get_connected_environment_resource(connected_env_id: str) -> str:
+    """Get a specific connected environment as a resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        env = await testzeus_client.connected_environments.get_one(connected_env_id)
+        env_data = {
+            "id": env.id,
+            "name": env.name,
+            "connection": getattr(env, "connection", None),
+            "created": str(env.created),
+            "updated": str(env.updated),
+            "modified_by": env.modified_by,
+        }
+
+        return json.dumps(env_data, indent=2)
+    except Exception as e:
+        return f"Error getting connected environment: {str(e)}"
 
 
 # ============================================================================
