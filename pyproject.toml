@@ -10,7 +10,7 @@ authors = [
     {name = "TestZeus Team", email = "info@testzeus.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastmcp>=2.0.0",
     "testzeus-sdk>=0.0.10",

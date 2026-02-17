@@ -8,7 +8,7 @@ import sys
 def main() -> None:
     """Main entry point for the TestZeus FastMCP Server."""
     try:
-        from .server import mcp
+        from testzeus_mcp_server.server import mcp
 
         print("Starting TestZeus MCP Server...")
         # FastMCP handles its own async event loop

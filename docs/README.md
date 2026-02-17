@@ -89,36 +89,73 @@ make release-major    # Create major release
 
 ## 📋 Available MCP Tools
 
-The server provides these tools for TestZeus operations:
+The server provides 67 tools for TestZeus operations:
 
-| Tool | Description | Usage |
-|------|-------------|-------|
-| `authenticate_testzeus` | Authenticate with TestZeus | Initial setup |
-| `list_tests` | List all tests | Browse available tests |
-| `get_test` | Get test details | View specific test |
-| `create_test` | Create new test | Add test to suite |
-| `update_test` | Update existing test | Modify test configuration |
-| `delete_test` | Delete test | Remove test from suite |
-| `run_test` | Execute test | Run individual test |
-| `list_test_runs` | List test executions | Browse test history |
-| `get_test_run` | Get run details | View execution results |
-| `create_test_run` | Start test execution | Run tests manually |
-| `list_environments` | List test environments | Browse environments |
-| `get_environment` | Get environment details | View environment config |
-| `create_environment` | Create new environment | Add test environment |
+| Tool Category | Count | Key Tools |
+|--------------|-------|-----------|
+| **Test Management** | 6 | `list_tests`, `create_test`, `update_test` |
+| **Test Run Management** | 3 | `list_test_runs`, `get_test_run` |
+| **Test Run Groups** | 6 | `create_test_run_group`, `download_test_run_group_report` |
+| **Environment Management** | 6 | `list_environments`, `create_environment` |
+| **Test Data Management** | 7 | `list_test_data`, `create_test_data` |
+| **Connected Environments** 🆕 | 5 | `list_connected_environments`, `create_connected_environment` |
+| **Hypermind Code Blocks** 🆕 | 8 | `list_hypermind_code_blocks`, `create_hypermind_code_block` |
+| **User Integrations** 🆕 | 2 | `list_user_integrations`, `get_user_integration` |
+| **Tag Management** | 5 | `list_tags`, `create_tags` |
+| **Test Report Schedules** | 4 | `list_test_report_schedules`, `create_test_report_schedule` |
+| **Notification Channels** | 5 | `list_notification_channels`, `create_notification_channel` |
+| **Test Report Runs** | 4 | `list_test_report_runs`, `download_test_report` |
+
+### New Features
+
+#### Connected Environments 🆕
+Link external integrations (databases, APIs, cloud services) to your tests and environments:
+- Create and manage external service connections
+- Link connections to multiple tests
+- Centralize configuration management
+
+#### Hypermind Code Blocks 🆕
+Reusable code snippets for tests:
+- Store Python and text files
+- Share code across multiple tests
+- Version control for test helpers
+
+#### User Integrations 🆕
+Access external service configurations (read-only):
+- View GitHub, Jira, Slack integrations
+- Check connection status
+- Retrieve configuration details
 
 ## 🌐 Available MCP Resources
 
-Browse TestZeus entities through these resource URIs:
+Browse TestZeus entities through 24 resource URIs:
 
 | Resource Type | URI Pattern | Description |
 |---------------|-------------|-------------|
 | Tests | `test://id` | Test configurations |
 | Test Runs | `test-run://id` | Test execution instances |
+| Test Run Groups | `test-run-group://id` | Grouped executions |
 | Environments | `environment://id` | Test environment configs |
+| Test Data | `test-data://id` | Test datasets |
+| **Connected Environments** 🆕 | `connected-environment://id` | External service connections |
+| **Hypermind Code Blocks** 🆕 | `hypermind-code-block://id` | Reusable code snippets |
+| **User Integrations** 🆕 | `user-integration://id` | External integration configs |
+| Tags | `tag://id` | Organization tags |
+| Test Report Schedules | `test-report-schedule://id` | Automated schedules |
+| Notification Channels | `notification-channel://id` | Notification configs |
+| Test Report Runs | `test-report-run://id` | Generated reports |
 | All Tests | `tests://` | Browse all tests |
 | All Test Runs | `test-runs://` | Browse all test runs |
+| All Test Run Groups | `test-run-groups://list` | Browse all groups |
 | All Environments | `environments://` | Browse all environments |
+| All Test Data | `test-data://` | Browse all test data |
+| **All Connected Environments** 🆕 | `connected-environments://` | Browse all connections |
+| **All Code Blocks** 🆕 | `hypermind-code-blocks://` | Browse all code blocks |
+| **All Integrations** 🆕 | `user-integrations://` | Browse all integrations |
+| All Tags | `tags://` | Browse all tags |
+| All Schedules | `test-report-schedules://list` | Browse all schedules |
+| All Channels | `notification-channels://list` | Browse all channels |
+| All Reports | `test-report-runs://list` | Browse all reports |
 
 ## 🎯 Common Use Cases
 
@@ -126,6 +163,8 @@ Browse TestZeus entities through these resource URIs:
 - **Test Management**: Create, update, and organize test suites
 - **Execution Monitoring**: Track test runs and analyze results
 - **Environment Management**: Configure and maintain test environments
+- **Code Reusability**: Share test helpers using Hypermind Code Blocks 🆕
+- **External Integrations**: Link tests to databases and APIs via Connected Environments 🆕
 - **Reporting**: Generate test reports and share with teams
 
 ### Development Teams
@@ -133,12 +172,14 @@ Browse TestZeus entities through these resource URIs:
 - **Pre-commit Testing**: Validate changes before deployment
 - **Feature Testing**: Test new features during development
 - **Regression Testing**: Ensure existing functionality works
+- **Integration Testing**: Use Connected Environments for external service testing 🆕
 
 ### DevOps Teams
 - **Infrastructure Testing**: Validate deployment environments
 - **Performance Monitoring**: Track application performance
 - **Automated Workflows**: Set up testing automation
 - **Environment Provisioning**: Manage test infrastructure
+- **Service Management**: Monitor and manage external integrations 🆕
 
 ## 🔗 External Resources
 
