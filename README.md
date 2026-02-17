@@ -244,15 +244,15 @@ Assistant: [Shows GitHub integration configuration and status]
 
 - **Test Management** (6 tools): `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_tests`
 - **Test Run Management** (3 tools): `list_test_runs`, `get_test_run`, `delete_test_run`
-- **Test Run Group Management** (6 tools): `list_test_run_groups`, `get_test_run_group`, `create_test_run_group`, `delete_test_run_group`, `cancel_test_run_group`, `download_test_run_group_report`, `download_test_run_group_attachments`
-- **Environment Management** (6 tools): `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
-- **Test Data Management** (7 tools): `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
+- **Test Run Group Management** (7 tools): `list_test_run_groups`, `get_test_run_group`, `create_test_run_group`, `delete_test_run_group`, `cancel_test_run_group`, `download_test_run_group_report`, `download_test_run_group_attachments`
+- **Environment Management** (8 tools): `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
+- **Test Data Management** (8 tools): `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
 - **Connected Environment Management** (5 tools): `list_connected_environments`, `get_connected_environment`, `create_connected_environment`, `update_connected_environment`, `delete_connected_environment`
 - **Hypermind Code Blocks** (8 tools): `list_hypermind_code_blocks`, `get_hypermind_code_block`, `create_hypermind_code_block`, `update_hypermind_code_block`, `delete_hypermind_code_block`, `add_hypermind_code_block_file`, `remove_hypermind_code_block_file`, `remove_all_hypermind_code_block_files`
 - **User Integration** (2 tools): `list_user_integrations`, `get_user_integration`
 - **Tag Management** (5 tools): `list_tags`, `get_tag`, `create_tags`, `update_tag`, `delete_tag`
-- **Test Report Schedule Management** (4 tools): `list_test_report_schedules`, `get_test_report_schedule`, `create_test_report_schedule`, `update_test_report_schedule`, `delete_test_report_schedule`
-- **Notification Channel Management** (5 tools): `list_notification_channels`, `get_notification_channel`, `create_notification_channel`, `update_notification_channel`, `delete_notification_channel`, `remove_notification_config`
+- **Test Report Schedule Management** (5 tools): `list_test_report_schedules`, `get_test_report_schedule`, `create_test_report_schedule`, `update_test_report_schedule`, `delete_test_report_schedule`
+- **Notification Channel Management** (6 tools): `list_notification_channels`, `get_notification_channel`, `create_notification_channel`, `update_notification_channel`, `delete_notification_channel`, `remove_notification_config`
 - **Test Report Run Management** (4 tools): `list_test_report_runs`, `get_test_report_run`, `delete_test_report_run`, `download_test_report`
 
 ### Available Resources (24 Resources)

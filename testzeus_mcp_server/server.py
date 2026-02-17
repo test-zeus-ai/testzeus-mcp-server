@@ -553,7 +553,7 @@ async def update_environment(
             data["tags"] = tags
         if supporting_data_files:
             data["supporting_data_files"] = supporting_data_files
-        if connected_environments:
+        if connected_environments is not None:
             data["connected_environments"] = connected_environments
 
         await testzeus_client.environments.update_environment(environment_id, **data)
