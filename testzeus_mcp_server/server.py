@@ -250,7 +250,7 @@ async def update_test(
             data["connected_environment"] = connected_environment
         # Hardcode execution_mode to lenient
         data["execution_mode"] = "lenient"
-        
+
         test = await testzeus_client.tests.update_test(test_id_or_name, **data)
 
         if ctx:
@@ -930,7 +930,8 @@ async def list_hypermind_code_blocks(
         if ctx:
             await ctx.info(f"Found {len(code_block_list)} hypermind code blocks")
 
-        return f"Found {len(code_block_list)} hypermind code blocks:\n{json.dumps(code_block_list, indent=2)}"
+        result = json.dumps(code_block_list, indent=2)
+        return f"Found {len(code_block_list)} hypermind code blocks:\n{result}"
     except Exception as e:
         error_msg = f"Error listing hypermind code blocks: {str(e)}"
         if ctx:
@@ -1019,7 +1020,9 @@ async def update_hypermind_code_block(
         if tags:
             data["tags"] = tags
 
-        await testzeus_client.hypermind_code_blocks.update_hypermind_code_block(code_block_id, **data)
+        await testzeus_client.hypermind_code_blocks.update_hypermind_code_block(
+            code_block_id, **data
+        )
 
         if ctx:
             await ctx.info(f"Updated hypermind code block: {code_block_id}")
@@ -1154,7 +1157,8 @@ async def list_user_integrations(
         if ctx:
             await ctx.info(f"Found {len(integration_list)} user integrations")
 
-        return f"Found {len(integration_list)} user integrations:\n{json.dumps(integration_list, indent=2)}"
+        result = json.dumps(integration_list, indent=2)
+        return f"Found {len(integration_list)} user integrations:\n{result}"
     except Exception as e:
         error_msg = f"Error listing user integrations: {str(e)}"
         if ctx:
@@ -1238,7 +1242,8 @@ async def list_connected_environments(
         if ctx:
             await ctx.info(f"Found {len(connected_env_list)} connected environments")
 
-        return f"Found {len(connected_env_list)} connected environments:\n{json.dumps(connected_env_list, indent=2)}"
+        result = json.dumps(connected_env_list, indent=2)
+        return f"Found {len(connected_env_list)} connected environments:\n{result}"
     except Exception as e:
         error_msg = f"Error listing connected environments: {str(e)}"
         if ctx:
