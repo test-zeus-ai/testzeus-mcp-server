@@ -183,6 +183,9 @@ class TestServerDocumentation:
             assert "async def list_tests" in content
             assert "async def get_test" in content
             assert "async def create_test" in content
+            assert "async def list_test_suites" in content
+            assert "async def create_test_suite" in content
+            assert "async def list_test_suite_runs" in content
 
     def test_server_has_authentication_functions(self):
         """Test that server has authentication-related functions."""
@@ -226,6 +229,26 @@ class TestServerDocumentation:
             assert "create_test" in content
             assert "update_test" in content
             assert "delete_test" in content
+            assert "get_test_input_params" in content
+            assert "get_dependent_test_suites" in content
+
+    def test_server_implements_test_suite_management_tools(self):
+        """Test that server implements suite management functionality."""
+        with open("testzeus_mcp_server/server.py") as f:
+            content = f.read()
+            assert "list_test_suites" in content
+            assert "get_test_suite" in content
+            assert "create_test_suite" in content
+            assert "update_test_suite" in content
+            assert "delete_test_suite" in content
+            assert "list_test_suite_runs" in content
+            assert "get_test_suite_run" in content
+            assert "create_test_suite_run" in content
+            assert "pause_test_suite_run" in content
+            assert "resume_test_suite_run" in content
+            assert "cancel_test_suite_run" in content
+            assert "list_test_suite_node_runs" in content
+            assert "list_test_suite_schedules" in content
 
     def test_server_implements_resource_templates(self):
         """Test that server defines MCP resources."""

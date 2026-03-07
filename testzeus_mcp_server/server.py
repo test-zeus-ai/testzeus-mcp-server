@@ -187,6 +187,9 @@ async def create_test(
     tags: list[str] | None = None,
     environment: str | None = None,
     connected_environment: list[str] | None = None,
+    input_schema: list[dict[str, Any]] | None = None,
+    output_schema: dict[str, Any] | None = None,
+    execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
 ) -> str:
     """Create a new test in TestZeus."""
@@ -202,7 +205,9 @@ async def create_test(
             tags=tags,
             environment=environment,
             connected_environment=connected_environment,
-            execution_mode="lenient",  # Hardcoded to lenient
+            input_schema=input_schema,
+            output_schema=output_schema,
+            execution_mode=execution_mode,
         )
 
         if ctx:
@@ -226,6 +231,9 @@ async def update_test(
     tags: list[str] | None = None,
     environment: str | None = None,
     connected_environment: list[str] | None = None,
+    input_schema: list[dict[str, Any]] | None = None,
+    output_schema: dict[str, Any] | None = None,
+    execution_mode: Literal["lenient", "strict"] | None = None,
     ctx: Context = None,
 ) -> str:
     """Update an existing test in TestZeus."""
@@ -248,8 +256,12 @@ async def update_test(
             data["environment"] = environment
         if connected_environment is not None:
             data["connected_environment"] = connected_environment
-        # Hardcode execution_mode to lenient
-        data["execution_mode"] = "lenient"
+        if input_schema is not None:
+            data["input_schema"] = input_schema
+        if output_schema is not None:
+            data["output_schema"] = output_schema
+        if execution_mode is not None:
+            data["execution_mode"] = execution_mode
 
         test = await testzeus_client.tests.update_test(test_id_or_name, **data)
 
@@ -259,6 +271,46 @@ async def update_test(
         return f"Successfully updated test '{test.name}' (ID: {test.id})"
     except Exception as e:
         error_msg = f"Error updating test: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_test_input_params(test_id: str, ctx: Context = None) -> str:
+    """Get merged input params and defaults for a test."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.tests.get_input_params(test_id)
+
+        if ctx:
+            await ctx.info(f"Retrieved input params for test: {test_id}")
+
+        return f"Test input params:\n{json.dumps(result, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting test input params: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_dependent_test_suites(test_id: str, ctx: Context = None) -> str:
+    """Get test suites that reference a test."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.tests.get_dependent_test_suites(test_id)
+
+        if ctx:
+            await ctx.info(f"Retrieved dependent suites for test: {test_id}")
+
+        return f"Dependent test suites:\n{json.dumps(result, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting dependent test suites: {str(e)}"
         if ctx:
             await ctx.error(error_msg)
         return error_msg
@@ -405,6 +457,441 @@ async def delete_test_run(test_run_id: str, ctx: Context = None) -> str:
         return f"Successfully deleted test run with ID: {test_run_id}"
     except Exception as e:
         error_msg = f"Error deleting test run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# Test Suite Management Tools
+@mcp.tool()
+async def list_test_suites(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all test suites in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+
+        result = await testzeus_client.test_suites.get_list(**params)
+        suites = result.get("items", [])
+        suite_list = [
+            {
+                "id": suite.id,
+                "name": suite.name,
+                "display_name": getattr(suite, "display_name", None),
+                "status": suite.status,
+                "execution_mode": getattr(suite, "execution_mode", None),
+            }
+            for suite in suites
+        ]
+
+        if ctx:
+            await ctx.info(f"Found {len(suite_list)} test suites")
+
+        return f"Found {len(suite_list)} test suites:\n{json.dumps(suite_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing test suites: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_test_suite(test_suite_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific test suite by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        suite = await testzeus_client.test_suites.get_one(test_suite_id_or_name)
+        suite_data = {
+            "id": suite.id,
+            "name": suite.name,
+            "display_name": getattr(suite, "display_name", None),
+            "status": suite.status,
+            "workflow_definition": getattr(suite, "workflow_definition", None),
+            "default_inputs": getattr(suite, "default_inputs", None),
+            "execution_mode": getattr(suite, "execution_mode", None),
+            "environment": getattr(suite, "environment", None),
+            "tags": getattr(suite, "tags", []),
+            "notification_channels": getattr(suite, "notification_channels", []),
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved test suite: {suite.name}")
+
+        return f"Test suite details:\n{json.dumps(suite_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting test suite: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_test_suite(
+    name: str,
+    workflow_definition: dict[str, Any],
+    default_inputs: dict[str, Any] | None = None,
+    input_schema: list[dict[str, Any]] | None = None,
+    status: str = "draft",
+    execution_mode: Literal["lenient", "strict"] = "lenient",
+    environment: str | None = None,
+    tags: list[str] | None = None,
+    notification_channels: list[str] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new test suite."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        suite = await testzeus_client.test_suites.create(
+            {
+                "name": name,
+                "workflow_definition": workflow_definition,
+                "default_inputs": default_inputs or {},
+                "input_schema": input_schema or [],
+                "status": status,
+                "execution_mode": execution_mode,
+                "environment": environment,
+                "tags": tags or [],
+                "notification_channels": notification_channels or [],
+            }
+        )
+
+        if ctx:
+            await ctx.info(f"Created test suite: {name}")
+
+        return f"Successfully created test suite '{name}' with ID: {suite.id}"
+    except Exception as e:
+        error_msg = f"Error creating test suite: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_test_suite(
+    test_suite_id_or_name: str,
+    name: str | None = None,
+    workflow_definition: dict[str, Any] | None = None,
+    default_inputs: dict[str, Any] | None = None,
+    input_schema: list[dict[str, Any]] | None = None,
+    status: str | None = None,
+    execution_mode: Literal["lenient", "strict"] | None = None,
+    environment: str | None = None,
+    tags: list[str] | None = None,
+    notification_channels: list[str] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update an existing test suite."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if workflow_definition is not None:
+            data["workflow_definition"] = workflow_definition
+        if default_inputs is not None:
+            data["default_inputs"] = default_inputs
+        if input_schema is not None:
+            data["input_schema"] = input_schema
+        if status is not None:
+            data["status"] = status
+        if execution_mode is not None:
+            data["execution_mode"] = execution_mode
+        if environment is not None:
+            data["environment"] = environment
+        if tags is not None:
+            data["tags"] = tags
+        if notification_channels is not None:
+            data["notification_channels"] = notification_channels
+
+        suite = await testzeus_client.test_suites.update(test_suite_id_or_name, data)
+
+        if ctx:
+            await ctx.info(f"Updated test suite: {suite.name}")
+
+        return f"Successfully updated test suite '{suite.name}' (ID: {suite.id})"
+    except Exception as e:
+        error_msg = f"Error updating test suite: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_test_suite(test_suite_id_or_name: str, ctx: Context = None) -> str:
+    """Delete a test suite."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        await testzeus_client.test_suites.delete(test_suite_id_or_name)
+        if ctx:
+            await ctx.info(f"Deleted test suite: {test_suite_id_or_name}")
+        return f"Successfully deleted test suite '{test_suite_id_or_name}'"
+    except Exception as e:
+        error_msg = f"Error deleting test suite: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def list_test_suite_runs(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all test suite runs in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+
+        result = await testzeus_client.test_suite_runs.get_list(**params)
+        runs = result.get("items", [])
+        run_list = [
+            {
+                "id": run.id,
+                "name": run.name,
+                "status": run.status,
+                "test_suite": getattr(run, "test_suite", None),
+                "start_time": str(getattr(run, "start_time", None)),
+                "end_time": str(getattr(run, "end_time", None)),
+            }
+            for run in runs
+        ]
+
+        if ctx:
+            await ctx.info(f"Found {len(run_list)} test suite runs")
+
+        return f"Found {len(run_list)} test suite runs:\n{json.dumps(run_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing test suite runs: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> str:
+    """Get a specific test suite run by ID."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        run = await testzeus_client.test_suite_runs.get_one(test_suite_run_id)
+        run_data = {
+            "id": run.id,
+            "name": run.name,
+            "status": run.status,
+            "test_suite": getattr(run, "test_suite", None),
+            "workflow_snapshot": getattr(run, "workflow_snapshot", None),
+            "input_values": getattr(run, "input_values", None),
+            "context_store": getattr(run, "context_store", None),
+            "outputs": getattr(run, "outputs", None),
+            "execution_checkpoint": getattr(run, "execution_checkpoint", None),
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved test suite run: {run.name}")
+
+        return f"Test suite run details:\n{json.dumps(run_data, cls=DateTimeEncoder, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting test suite run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_test_suite_run(
+    name: str,
+    test_suite: str,
+    input_values: dict[str, Any] | None = None,
+    environment: str | None = None,
+    execution_mode: Literal["lenient", "strict"] | None = None,
+    notification_channels: list[str] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new test suite run."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        payload = {
+            "name": name,
+            "test_suite": test_suite,
+            "input_values": input_values or {},
+        }
+        if environment is not None:
+            payload["environment"] = environment
+        if execution_mode is not None:
+            payload["execution_mode"] = execution_mode
+        if notification_channels is not None:
+            payload["notification_channels"] = notification_channels
+
+        run = await testzeus_client.test_suite_runs.create(payload)
+
+        if ctx:
+            await ctx.info(f"Created test suite run: {name}")
+
+        return f"Successfully created test suite run '{name}' with ID: {run.id}"
+    except Exception as e:
+        error_msg = f"Error creating test suite run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def pause_test_suite_run(
+    test_suite_run_id: str,
+    mode: Literal["graceful", "immediate"] = "graceful",
+    reason: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """Pause a running test suite run."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.test_suite_runs.pause(test_suite_run_id, mode=mode, reason=reason)
+        return f"Pause result:\n{json.dumps(result, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error pausing test suite run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def resume_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> str:
+    """Resume a paused test suite run."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.test_suite_runs.resume(test_suite_run_id)
+        return f"Resume result:\n{json.dumps(result, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error resuming test suite run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def cancel_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> str:
+    """Cancel a running test suite run."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.test_suite_runs.cancel(test_suite_run_id)
+        return f"Cancel result:\n{json.dumps(result, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error cancelling test suite run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def list_test_suite_node_runs(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all test suite node runs in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+
+        result = await testzeus_client.test_suite_node_runs.get_list(**params)
+        node_runs = result.get("items", [])
+        node_run_list = [
+            {
+                "id": node_run.id,
+                "test_suite_run": getattr(node_run, "test_suite_run", None),
+                "node_id": getattr(node_run, "node_id", None),
+                "status": getattr(node_run, "status", None),
+                "test_run": getattr(node_run, "test_run", None),
+            }
+            for node_run in node_runs
+        ]
+        return f"Found {len(node_run_list)} test suite node runs:\n{json.dumps(node_run_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing test suite node runs: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def list_test_suite_schedules(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all test suite schedules in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+
+        result = await testzeus_client.test_suite_schedules.get_list(**params)
+        schedules = result.get("items", [])
+        schedule_list = [
+            {
+                "id": schedule.id,
+                "name": getattr(schedule, "name", None),
+                "test_suite": getattr(schedule, "test_suite", None),
+                "cron_expression": getattr(schedule, "cron_expression", None),
+                "is_active": getattr(schedule, "is_active", None),
+            }
+            for schedule in schedules
+        ]
+        return f"Found {len(schedule_list)} test suite schedules:\n{json.dumps(schedule_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing test suite schedules: {str(e)}"
         if ctx:
             await ctx.error(error_msg)
         return error_msg
