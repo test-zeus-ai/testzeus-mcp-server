@@ -778,7 +778,11 @@ async def pause_test_suite_run(
         await authenticate_testzeus()
 
     try:
-        result = await testzeus_client.test_suite_runs.pause(test_suite_run_id, mode=mode, reason=reason)
+        result = await testzeus_client.test_suite_runs.pause(
+            test_suite_run_id,
+            mode=mode,
+            reason=reason,
+        )
         return f"Pause result:\n{json.dumps(result, indent=2)}"
     except Exception as e:
         error_msg = f"Error pausing test suite run: {str(e)}"
@@ -850,7 +854,10 @@ async def list_test_suite_node_runs(
             }
             for node_run in node_runs
         ]
-        return f"Found {len(node_run_list)} test suite node runs:\n{json.dumps(node_run_list, indent=2)}"
+        return (
+            f"Found {len(node_run_list)} test suite node runs:\n"
+            f"{json.dumps(node_run_list, indent=2)}"
+        )
     except Exception as e:
         error_msg = f"Error listing test suite node runs: {str(e)}"
         if ctx:
@@ -889,7 +896,10 @@ async def list_test_suite_schedules(
             }
             for schedule in schedules
         ]
-        return f"Found {len(schedule_list)} test suite schedules:\n{json.dumps(schedule_list, indent=2)}"
+        return (
+            f"Found {len(schedule_list)} test suite schedules:\n"
+            f"{json.dumps(schedule_list, indent=2)}"
+        )
     except Exception as e:
         error_msg = f"Error listing test suite schedules: {str(e)}"
         if ctx:
