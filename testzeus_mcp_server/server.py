@@ -15,7 +15,9 @@ Key Features:
 - Notification Channels: Configure notification channels for test results
 - Tags: Organize tests with tags
 
-All execution modes are hardcoded to 'lenient' for consistent behavior.
+Execution mode is configurable ('lenient' or 'strict') in create_test, update_test,
+create_test_suite, update_test_suite, and create_test_suite_run.
+Test run groups still use hardcoded 'lenient' mode for consistent behavior.
 Connected environments can be linked to both tests and environments for enhanced integration.
 """
 
@@ -783,7 +785,10 @@ async def pause_test_suite_run(
             mode=mode,
             reason=reason,
         )
-        return f"Pause result:\n{json.dumps(result, indent=2)}"
+        result_msg = f"Pause result:\n{json.dumps(result, indent=2)}"
+        if ctx:
+            await ctx.info(f"Paused test suite run: {test_suite_run_id} (mode={mode})")
+        return result_msg
     except Exception as e:
         error_msg = f"Error pausing test suite run: {str(e)}"
         if ctx:
@@ -799,7 +804,10 @@ async def resume_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> 
 
     try:
         result = await testzeus_client.test_suite_runs.resume(test_suite_run_id)
-        return f"Resume result:\n{json.dumps(result, indent=2)}"
+        result_msg = f"Resume result:\n{json.dumps(result, indent=2)}"
+        if ctx:
+            await ctx.info(f"Resumed test suite run: {test_suite_run_id}")
+        return result_msg
     except Exception as e:
         error_msg = f"Error resuming test suite run: {str(e)}"
         if ctx:
@@ -815,7 +823,10 @@ async def cancel_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> 
 
     try:
         result = await testzeus_client.test_suite_runs.cancel(test_suite_run_id)
-        return f"Cancel result:\n{json.dumps(result, indent=2)}"
+        result_msg = f"Cancel result:\n{json.dumps(result, indent=2)}"
+        if ctx:
+            await ctx.info(f"Cancelled test suite run: {test_suite_run_id}")
+        return result_msg
     except Exception as e:
         error_msg = f"Error cancelling test suite run: {str(e)}"
         if ctx:
@@ -854,10 +865,13 @@ async def list_test_suite_node_runs(
             }
             for node_run in node_runs
         ]
-        return (
+        result_msg = (
             f"Found {len(node_run_list)} test suite node runs:\n"
             f"{json.dumps(node_run_list, indent=2)}"
         )
+        if ctx:
+            await ctx.info(f"Found {len(node_run_list)} test suite node runs")
+        return result_msg
     except Exception as e:
         error_msg = f"Error listing test suite node runs: {str(e)}"
         if ctx:
@@ -896,10 +910,13 @@ async def list_test_suite_schedules(
             }
             for schedule in schedules
         ]
-        return (
+        result_msg = (
             f"Found {len(schedule_list)} test suite schedules:\n"
             f"{json.dumps(schedule_list, indent=2)}"
         )
+        if ctx:
+            await ctx.info(f"Found {len(schedule_list)} test suite schedules")
+        return result_msg
     except Exception as e:
         error_msg = f"Error listing test suite schedules: {str(e)}"
         if ctx:
