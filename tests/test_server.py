@@ -4,6 +4,7 @@ Note: These tests focus on testable components that can be isolated.
 Full integration tests would require the actual testzeus_sdk dependency.
 """
 
+import ast
 import json
 from datetime import datetime
 
@@ -18,6 +19,7 @@ class TestDateTimeEncoder:
 
     def test_encode_datetime(self):
         """Test encoding datetime objects to ISO format."""
+
         # Create a minimal DateTimeEncoder implementation for testing
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
@@ -32,6 +34,7 @@ class TestDateTimeEncoder:
 
     def test_encode_datetime_with_microseconds(self):
         """Test encoding datetime with microseconds."""
+
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, datetime):
@@ -45,6 +48,7 @@ class TestDateTimeEncoder:
 
     def test_encode_other_types(self):
         """Test that non-datetime types raise TypeError."""
+
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, datetime):
@@ -57,6 +61,7 @@ class TestDateTimeEncoder:
 
     def test_encode_in_json_dumps(self):
         """Test DateTimeEncoder works with json.dumps()."""
+
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, datetime):
@@ -73,6 +78,7 @@ class TestDateTimeEncoder:
 
     def test_encode_nested_datetime(self):
         """Test encoding nested structures with datetime objects."""
+
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, datetime):
@@ -91,6 +97,7 @@ class TestDateTimeEncoder:
 
     def test_datetime_encoder_preserves_other_json_types(self):
         """Test that encoder handles normal JSON types correctly."""
+
         class DateTimeEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, datetime):
@@ -125,6 +132,7 @@ class TestServerConfiguration:
         """Test that server is configured to use FastMCP."""
         # This test validates that the server file exists and uses FastMCP
         import os
+
         assert os.path.exists("testzeus_mcp_server/server.py")
 
         with open("testzeus_mcp_server/server.py") as f:
@@ -135,6 +143,7 @@ class TestServerConfiguration:
         """Test that server module defines expected components."""
         # Check that server.py file exists and has content
         import os
+
         assert os.path.exists("testzeus_mcp_server/server.py")
 
         with open("testzeus_mcp_server/server.py") as f:
@@ -145,6 +154,7 @@ class TestServerConfiguration:
         """Test that __main__ module has main() function."""
         # Check that __main__.py exists and defines main
         import os
+
         assert os.path.exists("testzeus_mcp_server/__main__.py")
 
         with open("testzeus_mcp_server/__main__.py") as f:
@@ -263,16 +273,19 @@ class TestModuleStructure:
     def test_package_has_init_file(self):
         """Test that package has __init__.py."""
         import os
+
         assert os.path.exists("testzeus_mcp_server/__init__.py")
 
     def test_package_has_main_file(self):
         """Test that package has __main__.py."""
         import os
+
         assert os.path.exists("testzeus_mcp_server/__main__.py")
 
     def test_package_has_server_file(self):
         """Test that package has server.py."""
         import os
+
         assert os.path.exists("testzeus_mcp_server/server.py")
 
     def test_main_file_defines_entry_point(self):
@@ -285,6 +298,7 @@ class TestModuleStructure:
     def test_server_file_is_substantial(self):
         """Test that server.py contains substantial implementation."""
         import os
+
         size = os.path.getsize("testzeus_mcp_server/server.py")
         # Server file should be reasonably large (many tools defined)
         assert size > 10000, f"Server file seems too small: {size} bytes"
@@ -361,34 +375,72 @@ class TestAPIIntegrationPatterns:
             assert "filters" in content
             assert "sort" in content
 
-    def test_test_tools_use_test_params_field(self):
-        """Test that MCP test tools use test_params instead of input_schema."""
+    @staticmethod
+    def _get_function_node(function_name: str) -> ast.AsyncFunctionDef:
         with open("testzeus_mcp_server/server.py") as f:
-            content = f.read()
-            create_block = content.split("async def create_test(")[1].split(
-                "async def update_test("
-            )[0]
-            update_block = content.split("async def update_test(")[1].split(
-                "async def get_test_input_params("
-            )[0]
+            module = ast.parse(f.read())
 
-        assert "test_params: dict[str, Any] | None = None" in create_block
-        assert "test_params=test_params" in create_block
-        assert "input_schema" not in create_block
+        for node in module.body:
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == function_name:
+                return node
 
-        assert "test_params: dict[str, Any] | None = None" in update_block
-        assert 'data["test_params"] = test_params' in update_block
-        assert 'data["input_schema"] = input_schema' not in update_block
+        raise AssertionError(f"Could not find function {function_name}")
+
+    def test_test_tools_use_test_params_field(self):
+        """Test that create_test and update_test use test_params for test defaults."""
+        create_node = self._get_function_node("create_test")
+        update_node = self._get_function_node("update_test")
+
+        create_args = [arg.arg for arg in create_node.args.args]
+        update_args = [arg.arg for arg in update_node.args.args]
+
+        assert "test_params" in create_args
+        assert "input_schema" not in create_args
+        assert "test_params" in update_args
+        assert "input_schema" not in update_args
+
+        create_calls = [
+            node
+            for node in ast.walk(create_node)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "create_test"
+        ]
+        assert any(
+            any(keyword.arg == "test_params" for keyword in call.keywords) for call in create_calls
+        )
+
+        update_assignments = [
+            node
+            for node in ast.walk(update_node)
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Subscript)
+                and isinstance(target.slice, ast.Constant)
+                and target.slice.value == "test_params"
+                for target in node.targets
+            )
+        ]
+        assert update_assignments
 
     def test_suite_run_creation_uses_sdk_run_helper(self):
         """Test that suite run creation delegates to the SDK helper."""
-        with open("testzeus_mcp_server/server.py") as f:
-            content = f.read()
-            create_run_block = content.split("async def create_test_suite_run(")[1].split(
-                "async def pause_test_suite_run("
-            )[0]
+        create_run_node = self._get_function_node("create_test_suite_run")
+        create_run_args = [arg.arg for arg in create_run_node.args.args]
 
-        assert 'execution_mode: Literal["lenient", "strict"] = "lenient"' in create_run_block
-        assert "testzeus_client.test_suite_runs.run(" in create_run_block
-        assert "workflow_snapshot" not in create_run_block
-        assert "execution_mode != \"lenient\"" in create_run_block
+        assert "execution_mode" not in create_run_args
+
+        run_calls = [
+            node
+            for node in ast.walk(create_run_node)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "run"
+            and isinstance(node.func.value, ast.Attribute)
+            and node.func.value.attr == "test_suite_runs"
+        ]
+        assert run_calls
+        assert not any(
+            isinstance(node, ast.Name) and node.id == "workflow_snapshot"
+            for node in ast.walk(create_run_node)
+        )

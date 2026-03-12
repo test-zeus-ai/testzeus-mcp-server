@@ -16,8 +16,8 @@ Key Features:
 - Tags: Organize tests with tags
 
 Execution mode is configurable ('lenient' or 'strict') in create_test, update_test,
-create_test_suite, update_test_suite, and create_test_suite_run.
-Test run groups still use hardcoded 'lenient' mode for consistent behavior.
+create_test_suite, and update_test_suite. Test suite runs and test run groups
+still use hardcoded 'lenient' mode for consistent behavior.
 Connected environments can be linked to both tests and environments for enhanced integration.
 """
 
@@ -241,17 +241,17 @@ async def update_test(
 
     try:
         data = {}
-        if name:
+        if name is not None:
             data["name"] = name
-        if test_feature:
+        if test_feature is not None:
             data["test_feature"] = test_feature
-        if status:
+        if status is not None:
             data["status"] = status
-        if test_data:
+        if test_data is not None:
             data["test_data"] = test_data
-        if tags:
+        if tags is not None:
             data["tags"] = tags
-        if environment:
+        if environment is not None:
             data["environment"] = environment
         if test_params is not None:
             data["test_params"] = test_params
@@ -300,7 +300,11 @@ async def get_dependent_test_suites(test_id: str, ctx: Context = None) -> str:
         await authenticate_testzeus()
 
     try:
-        result = await testzeus_client.tests.get_dependent_test_suites(test_id)
+        result = await testzeus_client.test_suites.get_list(
+            filters={"tests": {"operator": "?=", "value": [test_id]}},
+            page=1,
+            per_page=50,
+        )
 
         if ctx:
             await ctx.info(f"Retrieved dependent suites for test: {test_id}")
@@ -729,20 +733,14 @@ async def create_test_suite_run(
     test_suite: str,
     input_values: dict[str, Any] | None = None,
     environment: str | None = None,
-    execution_mode: Literal["lenient", "strict"] = "lenient",
     notification_channels: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
-    """Create a new test suite run."""
+    """Create a new test suite run in lenient mode."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        if execution_mode != "lenient":
-            raise ValueError(
-                "Test suite runs currently support only execution_mode='lenient'."
-            )
-
         run = await testzeus_client.test_suite_runs.run(
             display_name=name,
             test_suite=test_suite,
