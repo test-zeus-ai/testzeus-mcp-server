@@ -6,7 +6,6 @@ Full integration tests would require the actual testzeus_sdk dependency.
 
 import json
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -361,3 +360,35 @@ class TestAPIIntegrationPatterns:
             # Should support filters and sorting
             assert "filters" in content
             assert "sort" in content
+
+    def test_test_tools_use_test_params_field(self):
+        """Test that MCP test tools use test_params instead of input_schema."""
+        with open("testzeus_mcp_server/server.py") as f:
+            content = f.read()
+            create_block = content.split("async def create_test(")[1].split(
+                "async def update_test("
+            )[0]
+            update_block = content.split("async def update_test(")[1].split(
+                "async def get_test_input_params("
+            )[0]
+
+        assert "test_params: dict[str, Any] | None = None" in create_block
+        assert "test_params=test_params" in create_block
+        assert "input_schema" not in create_block
+
+        assert "test_params: dict[str, Any] | None = None" in update_block
+        assert 'data["test_params"] = test_params' in update_block
+        assert 'data["input_schema"] = input_schema' not in update_block
+
+    def test_suite_run_creation_uses_sdk_run_helper(self):
+        """Test that suite run creation delegates to the SDK helper."""
+        with open("testzeus_mcp_server/server.py") as f:
+            content = f.read()
+            create_run_block = content.split("async def create_test_suite_run(")[1].split(
+                "async def pause_test_suite_run("
+            )[0]
+
+        assert 'execution_mode: Literal["lenient", "strict"] = "lenient"' in create_run_block
+        assert "testzeus_client.test_suite_runs.run(" in create_run_block
+        assert "workflow_snapshot" not in create_run_block
+        assert "execution_mode != \"lenient\"" in create_run_block

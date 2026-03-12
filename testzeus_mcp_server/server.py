@@ -188,8 +188,7 @@ async def create_test(
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
-    connected_environment: list[str] | None = None,
-    input_schema: list[dict[str, Any]] | None = None,
+    test_params: dict[str, Any] | None = None,
     output_schema: dict[str, Any] | None = None,
     execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
@@ -203,11 +202,10 @@ async def create_test(
             name=name,
             test_feature=test_feature,
             status=status,
+            test_params=test_params,
             test_data=test_data,
             tags=tags,
             environment=environment,
-            connected_environment=connected_environment,
-            input_schema=input_schema,
             output_schema=output_schema,
             execution_mode=execution_mode,
         )
@@ -232,8 +230,7 @@ async def update_test(
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
-    connected_environment: list[str] | None = None,
-    input_schema: list[dict[str, Any]] | None = None,
+    test_params: dict[str, Any] | None = None,
     output_schema: dict[str, Any] | None = None,
     execution_mode: Literal["lenient", "strict"] | None = None,
     ctx: Context = None,
@@ -256,10 +253,8 @@ async def update_test(
             data["tags"] = tags
         if environment:
             data["environment"] = environment
-        if connected_environment is not None:
-            data["connected_environment"] = connected_environment
-        if input_schema is not None:
-            data["input_schema"] = input_schema
+        if test_params is not None:
+            data["test_params"] = test_params
         if output_schema is not None:
             data["output_schema"] = output_schema
         if execution_mode is not None:
@@ -734,7 +729,7 @@ async def create_test_suite_run(
     test_suite: str,
     input_values: dict[str, Any] | None = None,
     environment: str | None = None,
-    execution_mode: Literal["lenient", "strict"] | None = None,
+    execution_mode: Literal["lenient", "strict"] = "lenient",
     notification_channels: list[str] | None = None,
     ctx: Context = None,
 ) -> str:
@@ -743,19 +738,18 @@ async def create_test_suite_run(
         await authenticate_testzeus()
 
     try:
-        payload = {
-            "name": name,
-            "test_suite": test_suite,
-            "input_values": input_values or {},
-        }
-        if environment is not None:
-            payload["environment"] = environment
-        if execution_mode is not None:
-            payload["execution_mode"] = execution_mode
-        if notification_channels is not None:
-            payload["notification_channels"] = notification_channels
+        if execution_mode != "lenient":
+            raise ValueError(
+                "Test suite runs currently support only execution_mode='lenient'."
+            )
 
-        run = await testzeus_client.test_suite_runs.create(payload)
+        run = await testzeus_client.test_suite_runs.run(
+            display_name=name,
+            test_suite=test_suite,
+            input_values=input_values,
+            environment=environment,
+            notification_channels=notification_channels,
+        )
 
         if ctx:
             await ctx.info(f"Created test suite run: {name}")
