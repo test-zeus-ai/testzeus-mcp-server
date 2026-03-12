@@ -441,6 +441,6 @@ class TestAPIIntegrationPatterns:
         ]
         assert run_calls
         assert not any(
-            isinstance(node, ast.Name) and node.id == "workflow_snapshot"
-            for node in ast.walk(create_run_node)
+            any(keyword.arg == "workflow_snapshot" for keyword in call.keywords)
+            for call in run_calls
         )

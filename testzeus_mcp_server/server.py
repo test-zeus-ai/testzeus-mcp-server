@@ -279,6 +279,12 @@ async def get_test_input_params(test_id: str, ctx: Context = None) -> str:
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         result = await testzeus_client.tests.get_input_params(test_id)
 
@@ -299,17 +305,33 @@ async def get_dependent_test_suites(test_id: str, ctx: Context = None) -> str:
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         result = await testzeus_client.test_suites.get_list(
             filters={"tests": {"operator": "?=", "value": [test_id]}},
             page=1,
             per_page=50,
         )
+        suite_list = [
+            {
+                "id": suite.id,
+                "name": suite.name,
+                "display_name": getattr(suite, "display_name", None),
+                "status": suite.status,
+                "execution_mode": getattr(suite, "execution_mode", None),
+            }
+            for suite in result.get("items", [])
+        ]
 
         if ctx:
             await ctx.info(f"Retrieved dependent suites for test: {test_id}")
 
-        return f"Dependent test suites:\n{json.dumps(result, indent=2)}"
+        return f"Dependent test suites:\n{json.dumps(suite_list, indent=2)}"
     except Exception as e:
         error_msg = f"Error getting dependent test suites: {str(e)}"
         if ctx:
@@ -476,6 +498,12 @@ async def list_test_suites(
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         params = {"page": page, "per_page": min(per_page, 100)}
         if filters:
@@ -512,6 +540,12 @@ async def get_test_suite(test_suite_id_or_name: str, ctx: Context = None) -> str
     """Get a specific test suite by ID or name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         suite = await testzeus_client.test_suites.get_one(test_suite_id_or_name)
@@ -555,6 +589,12 @@ async def create_test_suite(
     """Create a new test suite."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         suite = await testzeus_client.test_suites.create(
@@ -600,6 +640,12 @@ async def update_test_suite(
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         data = {}
         if name is not None:
@@ -640,6 +686,12 @@ async def delete_test_suite(test_suite_id_or_name: str, ctx: Context = None) -> 
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         await testzeus_client.test_suites.delete(test_suite_id_or_name)
         if ctx:
@@ -663,6 +715,12 @@ async def list_test_suite_runs(
     """List all test suite runs in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         params = {"page": page, "per_page": min(per_page, 100)}
@@ -702,6 +760,12 @@ async def get_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> str
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         run = await testzeus_client.test_suite_runs.get_one(test_suite_run_id)
         run_data = {
@@ -740,6 +804,12 @@ async def create_test_suite_run(
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         run = await testzeus_client.test_suite_runs.run(
             display_name=name,
@@ -771,6 +841,12 @@ async def pause_test_suite_run(
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         result = await testzeus_client.test_suite_runs.pause(
             test_suite_run_id,
@@ -794,6 +870,12 @@ async def resume_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> 
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
     try:
         result = await testzeus_client.test_suite_runs.resume(test_suite_run_id)
         result_msg = f"Resume result:\n{json.dumps(result, indent=2)}"
@@ -812,6 +894,12 @@ async def cancel_test_suite_run(test_suite_run_id: str, ctx: Context = None) -> 
     """Cancel a running test suite run."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         result = await testzeus_client.test_suite_runs.cancel(test_suite_run_id)
@@ -837,6 +925,12 @@ async def list_test_suite_node_runs(
     """List all test suite node runs in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         params = {"page": page, "per_page": min(per_page, 100)}
@@ -882,6 +976,12 @@ async def list_test_suite_schedules(
     """List all test suite schedules in TestZeus."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
+
+    if testzeus_client is None:
+        error_msg = "Authentication failed - unable to connect to TestZeus"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
 
     try:
         params = {"page": page, "per_page": min(per_page, 100)}
