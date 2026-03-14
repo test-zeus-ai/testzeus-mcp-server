@@ -112,6 +112,9 @@ Assistant: [Creates a new test with appropriate parameters]
 
 User: "Tag it with 'authentication' and 'critical'"
 Assistant: [Applies tags to the test]
+
+User: "Set test_params for username and password defaults"
+Assistant: [Stores those defaults in the test_params field]
 ```
 
 #### Running Tests
@@ -121,6 +124,30 @@ Assistant: [Discovers and runs smoke tests]
 
 User: "Check the status of recent test runs"
 Assistant: [Shows test run statuses and results]
+```
+
+#### Managing Test Suites
+```text
+User: "Create a test suite for checkout regression using this workflow definition"
+Assistant: [Creates the test suite with default_inputs, input_schema, and lenient execution mode]
+
+User: "Show me all test suites that depend on test abc123"
+Assistant: [Queries dependent test suites using the test_suites relation]
+
+User: "Update the suite's default inputs for region and tenant"
+Assistant: [Updates the test suite defaults]
+```
+
+#### Managing Test Suite Runs
+```text
+User: "Run my checkout regression suite in staging"
+Assistant: [Creates a lenient test suite run with a workflow snapshot from the suite]
+
+User: "Pause the active suite run gracefully"
+Assistant: [Pauses the run]
+
+User: "List the node runs for the latest suite run"
+Assistant: [Shows node-level execution status]
 ```
 
 #### Managing Test Run Groups
@@ -240,11 +267,14 @@ User: "Get details about my GitHub integration"
 Assistant: [Shows GitHub integration configuration and status]
 ```
 
-### Available Tools (67 Tools)
+### Available Tools (82 Tools)
 
-- **Test Management** (6 tools): `list_tests`, `get_test`, `create_test`, `update_test`, `delete_test`, `run_tests`
+- **Test Management** (8 tools): `list_tests`, `get_test`, `create_test`, `update_test`, `get_test_input_params`, `get_dependent_test_suites`, `delete_test`, `run_tests`
 - **Test Run Management** (3 tools): `list_test_runs`, `get_test_run`, `delete_test_run`
 - **Test Run Group Management** (7 tools): `list_test_run_groups`, `get_test_run_group`, `create_test_run_group`, `delete_test_run_group`, `cancel_test_run_group`, `download_test_run_group_report`, `download_test_run_group_attachments`
+- **Test Suite Management** (5 tools): `list_test_suites`, `get_test_suite`, `create_test_suite`, `update_test_suite`, `delete_test_suite`
+- **Test Suite Run Management** (6 tools): `list_test_suite_runs`, `get_test_suite_run`, `create_test_suite_run`, `pause_test_suite_run`, `resume_test_suite_run`, `cancel_test_suite_run`
+- **Test Suite Execution Detail** (2 tools): `list_test_suite_node_runs`, `list_test_suite_schedules`
 - **Environment Management** (8 tools): `list_environments`, `get_environment`, `create_environment`, `update_environment`, `delete_environment`, `add_environment_file`, `remove_environment_file`, `remove_all_environment_files`
 - **Test Data Management** (8 tools): `list_test_data`, `get_test_data`, `create_test_data`, `update_test_data`, `delete_test_data`, `add_test_data_file`, `remove_test_data_file`, `remove_all_test_data_files`
 - **Connected Environment Management** (5 tools): `list_connected_environments`, `get_connected_environment`, `create_connected_environment`, `update_connected_environment`, `delete_connected_environment`
