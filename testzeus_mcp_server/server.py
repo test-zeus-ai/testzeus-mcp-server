@@ -202,6 +202,9 @@ async def create_test(
 
     testing_type defaults to 'web'. When set to 'mobile', an environment reference is required.
     """
+    if testing_type == "mobile" and not environment:
+        return "Error: environment is required when testing_type is 'mobile'"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -249,6 +252,9 @@ async def update_test(
 
     When testing_type is set to 'mobile', an environment reference is required.
     """
+    if testing_type == "mobile" and not environment:
+        return "Error: environment is required when testing_type is 'mobile'"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1146,6 +1152,12 @@ async def create_environment(
     data_content must be a JSON string in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
     """
+    is_mobile = device_type in ("mobile-android", "mobile-ios")
+    if is_mobile and (supporting_data_files or connected_environments or email_manager):
+        return "Error: supporting_data_files, connected_environments, and email_manager are not allowed for mobile environments"
+    if not is_mobile and mobile_supporting_data_file:
+        return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
