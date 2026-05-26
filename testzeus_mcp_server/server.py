@@ -128,8 +128,10 @@ async def list_tests(
                     "id": test.id,
                     "name": test.name,
                     "status": test.status,
+                    "testing_type": test.testing_type,
                     "test_feature": test.test_feature,
                     "tags": test.tags,
+                    "environment": test.environment,
                     "created": str(test.created),
                     "updated": str(test.updated),
                 }
@@ -158,9 +160,11 @@ async def get_test(test_id_or_name: str, ctx: Context = None) -> str:
             "id": test.id,
             "name": test.name,
             "status": test.status,
+            "testing_type": test.testing_type,
             "test_feature": test.test_feature,
             "tags": test.tags,
             "test_data": test.test_data,
+            "environment": test.environment,
             "config": getattr(test, "config", None),
             "metadata": getattr(test, "metadata", None),
             "created": str(test.created),
@@ -184,6 +188,7 @@ async def get_test(test_id_or_name: str, ctx: Context = None) -> str:
 async def create_test(
     name: str,
     test_feature: str,
+    testing_type: Literal["web", "mobile"] = "web",
     status: str = "draft",
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
@@ -193,7 +198,13 @@ async def create_test(
     execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
 ) -> str:
-    """Create a new test in TestZeus."""
+    """Create a new test in TestZeus.
+
+    testing_type defaults to 'web'. When set to 'mobile', an environment reference is required.
+    """
+    if testing_type == "mobile" and not environment:
+        return "Error: environment is required when testing_type is 'mobile'"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -201,6 +212,7 @@ async def create_test(
         test = await testzeus_client.tests.create_test(
             name=name,
             test_feature=test_feature,
+            testing_type=testing_type,
             status=status,
             test_params=test_params,
             test_data=test_data,
@@ -226,6 +238,7 @@ async def update_test(
     test_id_or_name: str,
     name: str | None = None,
     test_feature: str | None = None,
+    testing_type: Literal["web", "mobile"] | None = None,
     status: str | None = None,
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
@@ -235,7 +248,13 @@ async def update_test(
     execution_mode: Literal["lenient", "strict"] | None = None,
     ctx: Context = None,
 ) -> str:
-    """Update an existing test in TestZeus."""
+    """Update an existing test in TestZeus.
+
+    When testing_type is set to 'mobile', an environment reference is required.
+    """
+    if testing_type == "mobile" and not environment:
+        return "Error: environment is required when testing_type is 'mobile'"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -245,6 +264,8 @@ async def update_test(
             data["name"] = name
         if test_feature is not None:
             data["test_feature"] = test_feature
+        if testing_type:
+            data["testing_type"] = testing_type
         if status is not None:
             data["status"] = status
         if test_data is not None:
@@ -1045,10 +1066,12 @@ async def list_environments(
                 {
                     "id": env.id,
                     "name": env.name,
+                    "device_type": env.device_type,
                     "data": env.data_content,
                     "status": env.status,
                     "tags": env.tags,
                     "supporting_data_files": env.supporting_data_files,
+                    "mobile_supporting_data_file": env.mobile_supporting_data_file,
                     "created": str(env.created),
                     "updated": str(env.updated),
                 }
@@ -1076,10 +1099,17 @@ async def get_environment(environment_id_or_name: str, ctx: Context = None) -> s
         env_data = {
             "id": env.id,
             "name": env.name,
+            "device_type": env.device_type,
             "data": env.data_content,
             "status": env.status,
             "tags": env.tags,
             "supporting_data_files": env.supporting_data_files,
+            "mobile_supporting_data_file": env.mobile_supporting_data_file,
+            "connected_environments": env.connected_environments,
+            "email_manager": env.email_manager,
+            "source_code_integrations": env.source_code_integrations,
+            "agent_grounding_prompt": env.agent_grounding_prompt,
+            "device_config": env.device_config,
             "created": str(env.created),
             "updated": str(env.updated),
             "tenant": env.tenant,
@@ -1100,25 +1130,54 @@ async def get_environment(environment_id_or_name: str, ctx: Context = None) -> s
 @mcp.tool()
 async def create_environment(
     name: str,
+    device_type: Literal["browser", "mobile-android", "mobile-ios"] = "browser",
     data_content: str | None = None,
     status: Literal["draft", "ready", "deleted"] = "draft",
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
+    mobile_supporting_data_file: str | None = None,
     connected_environments: list[str] | None = None,
+    email_manager: list[str] | None = None,
+    source_code_integrations: list[str] | None = None,
+    agent_grounding_prompt: str | None = None,
+    device_config: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Create a new environment."""
+    """Create a new environment.
+
+    device_type controls which fields are allowed:
+    - 'browser' (default): supports supporting_data_files, connected_environments, email_manager
+    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+
+    data_content must be a JSON string in the format:
+    {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    """
+    is_mobile = device_type in ("mobile-android", "mobile-ios")
+    if is_mobile and (supporting_data_files or connected_environments or email_manager):
+        return (
+            "Error: supporting_data_files, connected_environments, and "
+            "email_manager are not allowed for mobile environments"
+        )
+    if not is_mobile and mobile_supporting_data_file:
+        return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
         env = await testzeus_client.environments.create_environment(
             name=name,
+            device_type=device_type,
             data=data_content,
             status=status,
             tags=tags,
             supporting_data_files=supporting_data_files,
+            mobile_supporting_data_file=mobile_supporting_data_file,
             connected_environments=connected_environments,
+            email_manager=email_manager,
+            source_code_integrations=source_code_integrations,
+            agent_grounding_prompt=agent_grounding_prompt,
+            device_config=device_config,
         )
 
         if ctx:
@@ -1136,14 +1195,28 @@ async def create_environment(
 async def update_environment(
     environment_id: str,
     name: str | None = None,
+    device_type: Literal["browser", "mobile-android", "mobile-ios"] | None = None,
     data_content: str | None = None,
     status: Literal["draft", "ready", "deleted"] | None = None,
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
+    mobile_supporting_data_file: str | None = None,
     connected_environments: list[str] | None = None,
+    email_manager: list[str] | None = None,
+    source_code_integrations: list[str] | None = None,
+    agent_grounding_prompt: str | None = None,
+    device_config: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Update an environment."""
+    """Update an environment.
+
+    device_type controls which fields are allowed:
+    - 'browser': supports supporting_data_files, connected_environments, email_manager
+    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+
+    data_content must be a JSON string in the format:
+    {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1151,6 +1224,8 @@ async def update_environment(
         data = {}
         if name:
             data["name"] = name
+        if device_type:
+            data["device_type"] = device_type
         if data_content:
             data["env_data"] = data_content
         if status:
@@ -1159,8 +1234,18 @@ async def update_environment(
             data["tags"] = tags
         if supporting_data_files:
             data["supporting_data_files"] = supporting_data_files
+        if mobile_supporting_data_file:
+            data["mobile_supporting_data_file"] = mobile_supporting_data_file
         if connected_environments is not None:
             data["connected_environments"] = connected_environments
+        if email_manager is not None:
+            data["email_manager"] = email_manager
+        if source_code_integrations is not None:
+            data["source_code_integrations"] = source_code_integrations
+        if agent_grounding_prompt is not None:
+            data["agent_grounding_prompt"] = agent_grounding_prompt
+        if device_config is not None:
+            data["device_config"] = device_config
 
         await testzeus_client.environments.update_environment(environment_id, **data)
 
@@ -1251,6 +1336,98 @@ async def remove_environment_file(environment_id: str, file_path: str, ctx: Cont
         return error_msg
 
 
+# Device Pool tools (read-only)
+@mcp.tool()
+async def list_device_pool(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List available devices in the device pool.
+
+    Devices can be filtered by platform (android/ios),
+    cloud_provider (browserstack/saucelabs/local),
+    device_type (real/virtual), and is_active (true/false).
+    """
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        per_page = min(per_page, 100)
+        params = {"page": page, "per_page": per_page}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.device_pool.get_list(**params)
+        devices = result.get("items", [])
+
+        device_list = []
+        for device in devices:
+            device_list.append(
+                {
+                    "id": device.id,
+                    "device_name": device.device_name,
+                    "platform": device.platform,
+                    "platform_version": device.platform_version,
+                    "cloud_provider": device.cloud_provider,
+                    "device_type": device.device_type,
+                    "is_active": device.is_active,
+                    "concurrency_limit": device.concurrency_limit,
+                    "active_sessions": device.active_sessions,
+                    "automation_name": device.automation_name,
+                    "device_tier": device.device_tier,
+                }
+            )
+
+        if ctx:
+            await ctx.info(f"Found {len(device_list)} devices")
+
+        return f"Found {len(device_list)} devices:\n{json.dumps(device_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing device pool: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_device_pool_entry(device_id: str, ctx: Context = None) -> str:
+    """Get a specific device from the pool by ID."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        device = await testzeus_client.device_pool.get_one(device_id)
+        device_data = {
+            "id": device.id,
+            "device_name": device.device_name,
+            "platform": device.platform,
+            "platform_version": device.platform_version,
+            "cloud_provider": device.cloud_provider,
+            "device_type": device.device_type,
+            "is_active": device.is_active,
+            "concurrency_limit": device.concurrency_limit,
+            "active_sessions": device.active_sessions,
+            "automation_name": device.automation_name,
+            "device_tier": device.device_tier,
+            "created": str(device.created),
+            "updated": str(device.updated),
+        }
+
+        if ctx:
+            await ctx.info(f"Retrieved device: {device.device_name}")
+
+        return f"Device details:\n{json.dumps(device_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting device: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
 @mcp.tool()
 async def get_test_data(test_id: str, ctx: Context = None) -> str:
     """Get the test data for a specific test."""
@@ -1295,7 +1472,11 @@ async def create_test_data(
     supporting_data_files: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Create a new test data."""
+    """Create a new test data.
+
+    content must be a JSON string in the format:
+    {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1353,7 +1534,11 @@ async def update_test_data(
     supporting_data_files: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Update a test data."""
+    """Update a test data.
+
+    content must be a JSON string in the format:
+    {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -2377,6 +2562,7 @@ async def list_tests_resource() -> str:
                     "id": test.id,
                     "name": test.name,
                     "status": test.status,
+                    "testing_type": test.testing_type,
                     "test_feature": test.test_feature,
                     "uri": f"test://{test.id}",
                 }
@@ -2399,9 +2585,11 @@ async def get_test_resource(test_id: str) -> str:
             "id": test.id,
             "name": test.name,
             "status": test.status,
+            "testing_type": test.testing_type,
             "test_feature": test.test_feature,
             "tags": test.tags,
             "test_data": test.test_data,
+            "environment": test.environment,
             "config": getattr(test, "config", None),
             "metadata": getattr(test, "metadata", None),
             "created": str(test.created),
@@ -2484,9 +2672,10 @@ async def list_environments_resource() -> str:
                 {
                     "id": env.id,
                     "name": env.name,
+                    "device_type": env.device_type,
                     "status": env.status,
                     "description": env.data_content,
-                    "files": len(env.supporting_data_files),
+                    "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
                     "uri": f"environment://{env.id}",
                 }
             )
@@ -2507,17 +2696,80 @@ async def get_environment_resource(environment_id: str) -> str:
         env_data = {
             "id": env.id,
             "name": env.name,
+            "device_type": env.device_type,
             "description": env.data_content,
             "metadata": getattr(env, "metadata", None),
             "created": str(env.created),
             "updated": str(env.updated),
-            "files": len(env.supporting_data_files),
+            "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
+            "mobile_supporting_data_file": env.mobile_supporting_data_file,
             "modified_by": env.modified_by,
+            "source_code_integrations": env.source_code_integrations,
+            "agent_grounding_prompt": env.agent_grounding_prompt,
+            "device_config": env.device_config,
         }
 
         return json.dumps(env_data, indent=2)
     except Exception as e:
         return f"Error getting environment: {str(e)}"
+
+
+@mcp.resource("device-pool://")
+async def list_device_pool_resource() -> str:
+    """List all devices in the pool as a browsable resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        result = await testzeus_client.device_pool.get_list(per_page=100)
+        devices = result.get("items", [])
+
+        device_list = []
+        for device in devices:
+            device_list.append(
+                {
+                    "id": device.id,
+                    "device_name": device.device_name,
+                    "platform": device.platform,
+                    "platform_version": device.platform_version,
+                    "cloud_provider": device.cloud_provider,
+                    "is_active": device.is_active,
+                    "uri": f"device-pool://{device.id}",
+                }
+            )
+
+        return json.dumps({"device_pool": device_list}, indent=2)
+    except Exception as e:
+        return f"Error listing device pool: {str(e)}"
+
+
+@mcp.resource("device-pool://{device_id}")
+async def get_device_pool_resource(device_id: str) -> str:
+    """Get a specific device from the pool as a resource."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+
+    try:
+        device = await testzeus_client.device_pool.get_one(device_id)
+        device_data = {
+            "id": device.id,
+            "device_name": device.device_name,
+            "platform": device.platform,
+            "platform_version": device.platform_version,
+            "cloud_provider": device.cloud_provider,
+            "device_type": device.device_type,
+            "is_active": device.is_active,
+            "concurrency_limit": device.concurrency_limit,
+            "active_sessions": device.active_sessions,
+            "automation_name": device.automation_name,
+            "device_tier": device.device_tier,
+            "created": str(device.created),
+            "updated": str(device.updated),
+        }
+
+        return json.dumps(device_data, indent=2)
+    except Exception as e:
+        return f"Error getting device: {str(e)}"
 
 
 @mcp.resource("test-data://")
