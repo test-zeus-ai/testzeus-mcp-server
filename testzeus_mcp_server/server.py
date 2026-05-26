@@ -1154,7 +1154,10 @@ async def create_environment(
     """
     is_mobile = device_type in ("mobile-android", "mobile-ios")
     if is_mobile and (supporting_data_files or connected_environments or email_manager):
-        return "Error: supporting_data_files, connected_environments, and email_manager are not allowed for mobile environments"
+        return (
+            "Error: supporting_data_files, connected_environments, and "
+            "email_manager are not allowed for mobile environments"
+        )
     if not is_mobile and mobile_supporting_data_file:
         return "Error: mobile_supporting_data_file is only allowed for mobile environments"
 
@@ -1344,7 +1347,8 @@ async def list_device_pool(
 ) -> str:
     """List available devices in the device pool.
 
-    Devices can be filtered by platform (android/ios), cloud_provider (browserstack/saucelabs/local),
+    Devices can be filtered by platform (android/ios),
+    cloud_provider (browserstack/saucelabs/local),
     device_type (real/virtual), and is_active (true/false).
     """
     if not await ensure_authenticated():
