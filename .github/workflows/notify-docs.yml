@@ -21,12 +21,12 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: test-zeus-ai
           repositories: testzeus-docs
-          permission-contents: write
+          permission-actions: write
 
       - name: Trigger docs rebuild
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          repository: test-zeus-ai/testzeus-docs
-          event-type: source-updated
-          client-payload: '{"source": "${{ github.repository }}", "sha": "${{ github.sha }}"}'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh workflow run deploy.yml \
+            --repo test-zeus-ai/testzeus-docs \
+            --ref main
