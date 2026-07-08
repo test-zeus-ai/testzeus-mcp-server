@@ -3935,6 +3935,7 @@ async def get_test_report_schedule_resource(schedule_id: str) -> str:
 
 # ----------------------------- Knowledge bases -----------------------------
 
+
 @mcp.tool()
 async def list_knowledge_bases(
     page: int = 1,
@@ -4096,6 +4097,7 @@ async def delete_knowledge_base(knowledge_base_id: str, ctx: Context = None) -> 
 
 
 # ------------------------------- Extensions --------------------------------
+
 
 @mcp.tool()
 async def list_extensions(
@@ -4260,6 +4262,7 @@ async def delete_extension(extension_id: str, ctx: Context = None) -> str:
 
 # ---------------------------- AI test generator ----------------------------
 
+
 @mcp.tool()
 async def generate_test(
     user_prompt: str,
@@ -4307,6 +4310,7 @@ async def generate_test(
 
 # --------------------------- Test suite schedules --------------------------
 # (list_test_suite_schedules already exists above)
+
 
 @mcp.tool()
 async def get_test_suite_schedule(schedule_id_or_name: str, ctx: Context = None) -> str:
@@ -4455,6 +4459,7 @@ async def delete_test_suite_schedule(schedule_id: str, ctx: Context = None) -> s
 # ------------------------ Test suite node runs (get) -----------------------
 # (list_test_suite_node_runs already exists above)
 
+
 @mcp.tool()
 async def get_test_suite_node_run(node_run_id: str, ctx: Context = None) -> str:
     """Get a specific test suite node run by ID."""
@@ -4488,6 +4493,7 @@ async def get_test_suite_node_run(node_run_id: str, ctx: Context = None) -> str:
 
 # ---------------------- Connected-environment file ops ---------------------
 # (create/get/list/update/delete_connected_environment already exist above)
+
 
 @mcp.tool()
 async def add_connected_environment_code_file(
