@@ -4499,11 +4499,12 @@ async def add_connected_environment_code_file(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.add_code_file(connected_environment_id, file_path)
+        await testzeus_client.connected_environments.add_code_file(cid, file_path)
         if ctx:
-            await ctx.info(f"Added code file to connected environment: {connected_environment_id}")
-        return f"Successfully added code file to connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Added code file to connected environment: {cid}")
+        return f"Successfully added code file to connected environment {cid}"
     except Exception as e:
         error_msg = f"Error adding connected environment code file: {str(e)}"
         if ctx:
@@ -4521,11 +4522,12 @@ async def remove_connected_environment_code_file(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.remove_code_file(connected_environment_id, file_name)
+        await testzeus_client.connected_environments.remove_code_file(cid, file_name)
         if ctx:
-            await ctx.info(f"Removed code file from connected environment: {connected_environment_id}")
-        return f"Successfully removed code file from connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Removed code file from connected environment: {cid}")
+        return f"Successfully removed code file from connected environment {cid}"
     except Exception as e:
         error_msg = f"Error removing connected environment code file: {str(e)}"
         if ctx:
@@ -4543,11 +4545,12 @@ async def remove_all_connected_environment_code_files(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.remove_all_code_files(connected_environment_id)
+        await testzeus_client.connected_environments.remove_all_code_files(cid)
         if ctx:
-            await ctx.info(f"Removed all code files from connected environment: {connected_environment_id}")
-        return f"Successfully removed all code files from connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Removed all code files from connected environment: {cid}")
+        return f"Successfully removed all code files from connected environment {cid}"
     except Exception as e:
         error_msg = f"Error removing all connected environment code files: {str(e)}"
         if ctx:
@@ -4565,11 +4568,12 @@ async def add_connected_environment_metadata_file(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.add_metadata_file(connected_environment_id, file_path)
+        await testzeus_client.connected_environments.add_metadata_file(cid, file_path)
         if ctx:
-            await ctx.info(f"Added metadata file to connected environment: {connected_environment_id}")
-        return f"Successfully added metadata file to connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Added metadata file to connected environment: {cid}")
+        return f"Successfully added metadata file to connected environment {cid}"
     except Exception as e:
         error_msg = f"Error adding connected environment metadata file: {str(e)}"
         if ctx:
@@ -4587,11 +4591,12 @@ async def remove_connected_environment_metadata_file(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.remove_metadata_file(connected_environment_id, file_name)
+        await testzeus_client.connected_environments.remove_metadata_file(cid, file_name)
         if ctx:
-            await ctx.info(f"Removed metadata file from connected environment: {connected_environment_id}")
-        return f"Successfully removed metadata file from connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Removed metadata file from connected environment: {cid}")
+        return f"Successfully removed metadata file from connected environment {cid}"
     except Exception as e:
         error_msg = f"Error removing connected environment metadata file: {str(e)}"
         if ctx:
@@ -4609,11 +4614,12 @@ async def remove_all_connected_environment_metadata_files(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    cid = connected_environment_id
     try:
-        await testzeus_client.connected_environments.remove_all_metadata_files(connected_environment_id)
+        await testzeus_client.connected_environments.remove_all_metadata_files(cid)
         if ctx:
-            await ctx.info(f"Removed all metadata files from connected environment: {connected_environment_id}")
-        return f"Successfully removed all metadata files from connected environment with ID: {connected_environment_id}"
+            await ctx.info(f"Removed all metadata files from connected environment: {cid}")
+        return f"Successfully removed all metadata files from connected environment {cid}"
     except Exception as e:
         error_msg = f"Error removing all connected environment metadata files: {str(e)}"
         if ctx:
