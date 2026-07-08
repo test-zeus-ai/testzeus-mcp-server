@@ -1971,7 +1971,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "testzeus-sdk", specifier = ">=0.0.19" },
+    { name = "testzeus-sdk", specifier = ">=0.0.20" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=4.0.0" },
 ]
 provides-extras = ["dev"]
@@ -1984,7 +1984,7 @@ dev = [
 
 [[package]]
 name = "testzeus-sdk"
-version = "0.0.19"
+version = "0.0.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1996,9 +1996,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/d6/1669f73557be90c19c84da06dd6859efff566027d4151bed497c004ab894/testzeus_sdk-0.0.19.tar.gz", hash = "sha256:72e0d26368f5cf97b799c5631639a3a196f04cb6e253cce1dadb45a8f90bdd7f", size = 64157, upload-time = "2026-05-04T15:13:41.496Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/00/0c16487a9764eae457bb31e675cff870684592a4f01efe89d2dd08ddebdd/testzeus_sdk-0.0.20.tar.gz", hash = "sha256:4244194d94fb3f08e6b4404287a86c0070a2254a604aec82d4dfb833b17198e0", size = 67872, upload-time = "2026-07-08T14:24:27.007Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/e4/55976f58312a1889049759e98dce5a772578e33a97dfc7f8fba883229b8c/testzeus_sdk-0.0.19-py3-none-any.whl", hash = "sha256:dd8e4a112e6e894217ff0c499d6ec6ddd9f78a44f54be8eaa40a4db8679d4f0f", size = 101557, upload-time = "2026-05-04T15:13:39.175Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/6a/ffa91290f2eb1f54b5bb28b612668aaf9e6e9a4ccdbaaea2be86d6625f5a/testzeus_sdk-0.0.20-py3-none-any.whl", hash = "sha256:2265427ed06c9e2b07e176dba2186ffae10c981c6a9a3db4dad3371ba5609495", size = 105982, upload-time = "2026-07-08T14:24:25.848Z" },
 ]
 
 [[package]]

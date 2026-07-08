@@ -1221,6 +1221,21 @@ async def update_environment(
         await authenticate_testzeus()
 
     try:
+        browser_only_fields = supporting_data_files or connected_environments or email_manager
+        if browser_only_fields or mobile_supporting_data_file:
+            effective_device_type = device_type
+            if effective_device_type is None:
+                existing = await testzeus_client.environments.get_one(environment_id)
+                effective_device_type = existing.device_type or "browser"
+            is_mobile = effective_device_type in ("mobile-android", "mobile-ios")
+            if is_mobile and browser_only_fields:
+                return (
+                    "Error: supporting_data_files, connected_environments, and "
+                    "email_manager are not allowed for mobile environments"
+                )
+            if not is_mobile and mobile_supporting_data_file:
+                return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+
         data = {}
         if name:
             data["name"] = name
