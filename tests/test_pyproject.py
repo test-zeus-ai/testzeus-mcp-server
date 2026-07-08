@@ -95,7 +95,7 @@ class TestPyprojectToml:
         """Test TestZeus SDK version constraint."""
         dependencies = pyproject_data["project"]["dependencies"]
         sdk_dep = [d for d in dependencies if d.startswith("testzeus-sdk")][0]
-        assert ">=0.0.10" in sdk_dep, "TestZeus SDK should be >= 0.0.10"
+        assert ">=0.0.20" in sdk_dep, "TestZeus SDK must be >= 0.0.20 for mobile and device pool support"
 
     def test_dev_dependencies(self, pyproject_data):
         """Test that dev dependencies are specified."""
