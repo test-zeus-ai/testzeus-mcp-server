@@ -41,6 +41,40 @@ uv sync
 
 ### Configuration
 
+#### Claude Code (CLI)
+
+Add the server with a single command:
+
+```bash
+claude mcp add testzeus \
+  --env TESTZEUS_EMAIL=your-email@example.com \
+  --env TESTZEUS_PASSWORD='your-password' \
+  --env TESTZEUS_BASE_URL=https://pb.prod.testzeus.app \
+  -- uv run --directory /path/to/testzeus-mcp-server testzeus-mcp-server
+```
+
+Replace `/path/to/testzeus-mcp-server` with the absolute path to your cloned repository. This produces the following MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "testzeus": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/path/to/testzeus-mcp-server",
+        "testzeus-mcp-server"
+      ],
+      "env": {
+        "TESTZEUS_EMAIL": "your-email@example.com",
+        "TESTZEUS_PASSWORD": "your-password",
+        "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
+      }
+    }
+  }
+}
+```
+
 #### Claude Desktop
 
 1. **Edit your Claude Desktop configuration file:**
@@ -56,11 +90,15 @@ uv sync
      "mcpServers": {
        "testzeus": {
          "command": "uv",
-         "args": ["run", "testzeus-mcp-server"],
+         "args": [
+           "run",
+           "--directory", "/path/to/testzeus-mcp-server",
+           "testzeus-mcp-server"
+         ],
          "env": {
-           "PATH": "/path/to/testzeus-mcp-server",
            "TESTZEUS_EMAIL": "your-email@example.com",
-           "TESTZEUS_PASSWORD": "your-password"
+           "TESTZEUS_PASSWORD": "your-password",
+           "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
          }
        }
      }
@@ -81,11 +119,15 @@ uv sync
    {
      "name": "TestZeus",
      "command": "uv",
-     "args": ["run", "testzeus-mcp-server"],
+     "args": [
+       "run",
+       "--directory", "/path/to/testzeus-mcp-server",
+       "testzeus-mcp-server"
+     ],
      "env": {
-       "PATH": "/path/to/testzeus-mcp-server",
        "TESTZEUS_EMAIL": "your-email@example.com",
-       "TESTZEUS_PASSWORD": "your-password"
+       "TESTZEUS_PASSWORD": "your-password",
+       "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
      }
    }
    ```
