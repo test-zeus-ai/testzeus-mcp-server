@@ -41,6 +41,45 @@ uv sync
 
 ### Configuration
 
+All clients use the same server invocation and environment variables — only the config file location and format differ:
+
+- **Command:** `uv run --directory /path/to/testzeus-mcp-server testzeus-mcp-server` (replace `/path/to/testzeus-mcp-server` with the absolute path to your cloned repository)
+- **Environment variables:** `TESTZEUS_EMAIL`, `TESTZEUS_PASSWORD`, `TESTZEUS_BASE_URL` (e.g. `https://pb.prod.testzeus.app`)
+
+#### Claude Code (CLI)
+
+Add the server with a single command:
+
+```bash
+claude mcp add testzeus \
+  --env TESTZEUS_EMAIL=your-email@example.com \
+  --env TESTZEUS_PASSWORD='your-password' \
+  --env TESTZEUS_BASE_URL=https://pb.prod.testzeus.app \
+  -- uv run --directory /path/to/testzeus-mcp-server testzeus-mcp-server
+```
+
+This produces the following MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "testzeus": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/path/to/testzeus-mcp-server",
+        "testzeus-mcp-server"
+      ],
+      "env": {
+        "TESTZEUS_EMAIL": "your-email@example.com",
+        "TESTZEUS_PASSWORD": "your-password",
+        "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
+      }
+    }
+  }
+}
+```
+
 #### Claude Desktop
 
 1. **Edit your Claude Desktop configuration file:**
@@ -56,11 +95,15 @@ uv sync
      "mcpServers": {
        "testzeus": {
          "command": "uv",
-         "args": ["run", "testzeus-mcp-server"],
+         "args": [
+           "run",
+           "--directory", "/path/to/testzeus-mcp-server",
+           "testzeus-mcp-server"
+         ],
          "env": {
-           "PATH": "/path/to/testzeus-mcp-server",
            "TESTZEUS_EMAIL": "your-email@example.com",
-           "TESTZEUS_PASSWORD": "your-password"
+           "TESTZEUS_PASSWORD": "your-password",
+           "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
          }
        }
      }
@@ -69,28 +112,93 @@ uv sync
 
 3. **Restart Claude Desktop**
 
-#### Cursor IDE
+#### Codex CLI
 
-1. **Open Cursor Settings** (`Cmd/Ctrl + ,`)
+Add the server with a single command:
 
-2. **Navigate to Extensions → Model Context Protocol**
+```bash
+codex mcp add testzeus \
+  --env TESTZEUS_EMAIL=your-email@example.com \
+  --env TESTZEUS_PASSWORD='your-password' \
+  --env TESTZEUS_BASE_URL=https://pb.prod.testzeus.app \
+  -- uv run --directory /path/to/testzeus-mcp-server testzeus-mcp-server
+```
 
-3. **Add a new MCP server with these settings:**
+Or edit `~/.codex/config.toml` directly (Codex uses TOML):
+
+```toml
+[mcp_servers.testzeus]
+command = "uv"
+args = ["run", "--directory", "/path/to/testzeus-mcp-server", "testzeus-mcp-server"]
+
+[mcp_servers.testzeus.env]
+TESTZEUS_EMAIL = "your-email@example.com"
+TESTZEUS_PASSWORD = "your-password"
+TESTZEUS_BASE_URL = "https://pb.prod.testzeus.app"
+```
+
+#### Cursor
+
+1. **Create or edit the MCP config file:**
+
+   **Global:** `~/.cursor/mcp.json`
+   **Per-project:** `.cursor/mcp.json` in your project root
+
+2. **Add the TestZeus MCP server configuration:**
 
    ```json
    {
-     "name": "TestZeus",
-     "command": "uv",
-     "args": ["run", "testzeus-mcp-server"],
-     "env": {
-       "PATH": "/path/to/testzeus-mcp-server",
-       "TESTZEUS_EMAIL": "your-email@example.com",
-       "TESTZEUS_PASSWORD": "your-password"
+     "mcpServers": {
+       "testzeus": {
+         "command": "uv",
+         "args": [
+           "run",
+           "--directory", "/path/to/testzeus-mcp-server",
+           "testzeus-mcp-server"
+         ],
+         "env": {
+           "TESTZEUS_EMAIL": "your-email@example.com",
+           "TESTZEUS_PASSWORD": "your-password",
+           "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
+         }
+       }
      }
    }
    ```
 
-4. **Save and restart Cursor**
+3. **Enable the server** under Cursor Settings → MCP (or restart Cursor)
+
+#### Windsurf
+
+Edit `~/.codeium/windsurf/mcp_config.json` and add the same `mcpServers` block as the Cursor example above, then refresh the servers from Windsurf's MCP settings.
+
+#### VS Code (GitHub Copilot)
+
+Create `.vscode/mcp.json` in your workspace (note the top-level key is `servers`):
+
+```json
+{
+  "servers": {
+    "testzeus": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/path/to/testzeus-mcp-server",
+        "testzeus-mcp-server"
+      ],
+      "env": {
+        "TESTZEUS_EMAIL": "your-email@example.com",
+        "TESTZEUS_PASSWORD": "your-password",
+        "TESTZEUS_BASE_URL": "https://pb.prod.testzeus.app"
+      }
+    }
+  }
+}
+```
+
+#### Gemini CLI
+
+Edit `~/.gemini/settings.json` and add the same `mcpServers` block as the Cursor example above.
 
 ## Usage
 
