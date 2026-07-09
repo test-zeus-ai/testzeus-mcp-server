@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "testzeus-mcp-server"
-version = "2.0.0"
+version = "2.0.1"
 description = "FastMCP server for TestZeus SDK - enables Claude and other MCP clients to conduct intelligent testing activities"
 authors = [
     {name = "TestZeus Team", email = "info@testzeus.com"}
@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastmcp>=2.0.0",
-    "testzeus-sdk>=0.0.20",
+    "testzeus-sdk>=0.0.21",
     "aiohttp>=3.8.0",
     "python-dateutil>=2.9.0.post0",
 ]
