@@ -4194,6 +4194,245 @@ async def get_test_report_schedule_resource(schedule_id: str) -> str:
         return f"Error getting test report schedule: {str(e)}"
 
 
+# =====================================================================
+# Agent Harness: adversarial testing of AI agents (Salesforce Agentforce).
+# Wraps the SDK's client.agent_harness manager. Flow: list agents ->
+# list/generate pathways -> run simulation -> poll status -> results.
+# =====================================================================
+
+
+def _require_agent_harness() -> str | None:
+    """Return an error string if the Agent Harness isn't usable, else None."""
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+    if not hasattr(testzeus_client, "agent_harness"):
+        return (
+            "Agent Harness requires a newer testzeus-sdk. Upgrade with: pip install -U testzeus-sdk"
+        )
+    return None
+
+
+@mcp.tool()
+async def list_adversary_agents(
+    page: int = 1,
+    per_page: int = 50,
+    status: str | None = None,
+    search: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """List agents available for adversarial (Agent Harness) testing."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.list_agents(
+            page=page,
+            per_page=min(per_page, 100),
+            status=status,
+            search=search,
+        )
+        items = result.get("items", result if isinstance(result, list) else [])
+        if ctx:
+            await ctx.info(f"Found {len(items)} agents")
+        return f"Found {len(items)} agents:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error listing adversary agents: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_adversary_agent(agent_id: str, ctx: Context = None) -> str:
+    """Get details for a single Agent Harness agent by ID."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.get_agent(agent_id)
+        if ctx:
+            await ctx.info(f"Retrieved agent {agent_id}")
+        return f"Agent details:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error getting adversary agent: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def list_adversary_pathways(
+    agent_id: str | None = None,
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+) -> str:
+    """List adversarial test pathways, optionally scoped to a single agent."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.list_pathways(
+            agent_id=agent_id,
+            page=page,
+            per_page=min(per_page, 100),
+        )
+        items = result.get("items", result if isinstance(result, list) else [])
+        if ctx:
+            await ctx.info(f"Found {len(items)} pathways")
+        return f"Found {len(items)} pathways:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error listing adversary pathways: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def generate_adversary_pathways(
+    agent_profile: str,
+    directional_prompt: str,
+    name: str | None = None,
+    agent_name: str | None = None,
+    num_pathways: int | None = None,
+    allow_destructive: bool = False,
+    ctx: Context = None,
+) -> str:
+    """Start an AI pathway-generation job for a Salesforce agent profile."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.generate_pathways(
+            agent_profile=agent_profile,
+            directional_prompt=directional_prompt,
+            name=name,
+            agent_name=agent_name,
+            num_pathways=num_pathways,
+            allow_destructive=allow_destructive,
+        )
+        if ctx:
+            await ctx.info("Started pathway generation")
+        return f"Pathway generation started:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error generating adversary pathways: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def run_adversary_simulation(
+    agent_id: str,
+    pathway_ids: list[str],
+    name: str | None = None,
+    agent_name: str | None = None,
+    run_as_profile: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """Start an adversarial simulation run (creates a pathways group)."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.run(
+            agent_id,
+            pathway_ids,
+            name=name,
+            agent_name=agent_name,
+            run_as_profile=run_as_profile,
+        )
+        group_id = result.get("id") if isinstance(result, dict) else None
+        if ctx:
+            await ctx.info(f"Started simulation run (group {group_id})")
+        payload = json.dumps(result, indent=2, cls=DateTimeEncoder)
+        return f"Simulation run started (group {group_id}):\n{payload}"
+    except Exception as e:
+        error_msg = f"Error running adversary simulation: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_adversary_run_status(group_id: str, ctx: Context = None) -> str:
+    """Get status and results for an adversarial simulation run group."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.get_status(group_id)
+        if ctx:
+            await ctx.info(f"Retrieved status for group {group_id}")
+        return f"Run status:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error getting adversary run status: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def cancel_adversary_run(group_id: str, ctx: Context = None) -> str:
+    """Cancel a running adversarial simulation group."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.cancel(group_id)
+        if ctx:
+            await ctx.info(f"Cancelled simulation group {group_id}")
+        payload = json.dumps(result, indent=2, cls=DateTimeEncoder)
+        return f"Cancelled simulation group {group_id}:\n{payload}"
+    except Exception as e:
+        error_msg = f"Error cancelling adversary run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_salesforce_run_as_profiles(connection_id: str, ctx: Context = None) -> str:
+    """Get Salesforce user profiles for the Run-As-User (RBAC) picker."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    guard = _require_agent_harness()
+    if guard:
+        return guard
+
+    try:
+        result = await testzeus_client.agent_harness.get_sf_profiles(connection_id)
+        if ctx:
+            await ctx.info(f"Retrieved Salesforce profiles for connection {connection_id}")
+        return f"Salesforce profiles:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+    except Exception as e:
+        error_msg = f"Error getting Salesforce run-as profiles: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
 # Server run function for backwards compatibility
 async def run():
     """Run the FastMCP server."""
