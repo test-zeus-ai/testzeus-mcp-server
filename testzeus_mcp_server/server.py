@@ -2912,7 +2912,8 @@ async def list_environments_resource() -> str:
                 summary["mobile_device"] = getattr(env, "mobile_device", None)
                 summary["files"] = 1 if env.mobile_supporting_data_file else 0
             else:
-                summary["files"] = len(env.supporting_data_files) if env.supporting_data_files else 0
+                files = env.supporting_data_files
+                summary["files"] = len(files) if files else 0
             env_list.append(summary)
 
         return json.dumps({"environments": env_list}, indent=2)
