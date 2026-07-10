@@ -1074,21 +1074,7 @@ async def list_environments(
 
         env_list = []
         for env in environments:
-            env_list.append(
-                {
-                    "id": env.id,
-                    "name": env.name,
-                    "device_type": env.device_type,
-                    "data": _mask_secret_values(env.data_content),
-                    "tags": env.tags,
-                    "supporting_data_files": _format_supporting_files(env),
-                    "mobile_supporting_data_file": _format_files(
-                        env.mobile_supporting_data_file_info, env.mobile_supporting_data_file
-                    ),
-                    "created": str(env.created),
-                    "updated": str(env.updated),
-                }
-            )
+            env_list.append(_serialize_environment(env, detail=False))
 
         if ctx:
             await ctx.info(f"Found {len(env_list)} environments")
@@ -1109,26 +1095,7 @@ async def get_environment(environment_id_or_name: str, ctx: Context = None) -> s
 
     try:
         env = await testzeus_client.environments.get_one(environment_id_or_name)
-        env_data = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "data": _mask_secret_values(env.data_content),
-            "tags": env.tags,
-            "supporting_data_files": _format_supporting_files(env),
-            "mobile_supporting_data_file": _format_files(
-                env.mobile_supporting_data_file_info, env.mobile_supporting_data_file
-            ),
-            "browser_auth_file": _format_files(env.browser_auth_file_info, env.browser_auth_file),
-            "connected_environments": env.connected_environments,
-            "email_manager": env.email_manager,
-            "source_code_integrations": env.source_code_integrations,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-            "created": str(env.created),
-            "updated": str(env.updated),
-            "tenant": env.tenant,
-            "modified_by": env.modified_by,
-        }
+        env_data = _serialize_environment(env, detail=True)
 
         if ctx:
             await ctx.info(f"Retrieved environment: {env.name}")
@@ -1149,6 +1116,7 @@ async def create_environment(
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
     mobile_supporting_data_file: str | None = None,
+    mobile_device: str | None = None,
     connected_environments: list[str] | None = None,
     email_manager: list[str] | None = None,
     source_code_integrations: list[str] | None = None,
@@ -1157,24 +1125,29 @@ async def create_environment(
 ) -> str:
     """Create a new environment. Returns the created record, including its ID.
 
-    device_type controls which fields are allowed:
-    - 'browser' (default): supports supporting_data_files, connected_environments, email_manager
-    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+    device_type controls which fields are allowed / shown:
+    - 'browser' (default): supporting_data_files, connected_environments, email_manager
+      (do not pass mobile_supporting_data_file or mobile_device)
+    - 'mobile-android'/'mobile-ios': mobile_supporting_data_file, mobile_device
+      (do not pass supporting_data_files or connected_environments)
 
+    mobile_device is a device_pool ID or device_name (use list_device_pool to discover).
     data_content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
     tags/connected_environments/email_manager must be names of existing records, or IDs.
     agent_grounding_prompt is a JSON object with 'test_creation' and/or
     'test_execution' string keys; missing keys default to "".
     """
-    is_mobile = device_type in ("mobile-android", "mobile-ios")
-    if is_mobile and (supporting_data_files or connected_environments or email_manager):
-        return (
-            "Error: supporting_data_files, connected_environments, and "
-            "email_manager are not allowed for mobile environments"
-        )
-    if not is_mobile and mobile_supporting_data_file:
-        return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+    validation_error = _validate_environment_device_fields(
+        device_type,
+        supporting_data_files=supporting_data_files,
+        mobile_supporting_data_file=mobile_supporting_data_file,
+        mobile_device=mobile_device,
+        connected_environments=connected_environments,
+        email_manager=email_manager,
+    )
+    if validation_error:
+        return validation_error
 
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1187,21 +1160,14 @@ async def create_environment(
             tags=tags,
             supporting_data_files=supporting_data_files,
             mobile_supporting_data_file=mobile_supporting_data_file,
+            mobile_device=mobile_device,
             connected_environments=connected_environments,
             email_manager=email_manager,
             source_code_integrations=source_code_integrations,
             agent_grounding_prompt=agent_grounding_prompt,
         )
 
-        created = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "data": _mask_secret_values(env.data_content),
-            "tags": env.tags,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-            "created": str(env.created),
-        }
+        created = _serialize_environment(env, detail=True)
 
         if ctx:
             await ctx.info(f"Created environment: {name}")
@@ -1223,6 +1189,7 @@ async def update_environment(
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
     mobile_supporting_data_file: str | None = None,
+    mobile_device: str | None = None,
     connected_environments: list[str] | None = None,
     email_manager: list[str] | None = None,
     source_code_integrations: list[str] | None = None,
@@ -1232,10 +1199,13 @@ async def update_environment(
     """Update an environment by its 15-character ID or exact name.
 
     At least one field must be provided.
-    device_type controls which fields are allowed:
-    - 'browser': supports supporting_data_files, connected_environments, email_manager
-    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+    device_type controls which fields are allowed / shown:
+    - 'browser': supporting_data_files, connected_environments, email_manager
+      (do not pass mobile_supporting_data_file or mobile_device)
+    - 'mobile-android'/'mobile-ios': mobile_supporting_data_file, mobile_device
+      (do not pass supporting_data_files or connected_environments)
 
+    mobile_device is a device_pool ID or device_name (use list_device_pool to discover).
     data_content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
     agent_grounding_prompt is a JSON object with 'test_creation' and/or
@@ -1251,6 +1221,7 @@ async def update_environment(
         tags,
         supporting_data_files,
         mobile_supporting_data_file,
+        mobile_device,
         connected_environments,
         email_manager,
         source_code_integrations,
@@ -1260,20 +1231,31 @@ async def update_environment(
         return "Error updating environment: provide at least one field to update"
 
     try:
-        browser_only_fields = supporting_data_files or connected_environments or email_manager
-        if browser_only_fields or mobile_supporting_data_file:
+        device_fields_touched = any(
+            v is not None
+            for v in (
+                supporting_data_files,
+                mobile_supporting_data_file,
+                mobile_device,
+                connected_environments,
+                email_manager,
+            )
+        )
+        if device_fields_touched or device_type is not None:
             effective_device_type = device_type
             if effective_device_type is None:
                 existing = await testzeus_client.environments.get_one(environment_id)
                 effective_device_type = existing.device_type or "browser"
-            is_mobile = effective_device_type in ("mobile-android", "mobile-ios")
-            if is_mobile and browser_only_fields:
-                return (
-                    "Error: supporting_data_files, connected_environments, and "
-                    "email_manager are not allowed for mobile environments"
-                )
-            if not is_mobile and mobile_supporting_data_file:
-                return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+            validation_error = _validate_environment_device_fields(
+                effective_device_type,
+                supporting_data_files=supporting_data_files,
+                mobile_supporting_data_file=mobile_supporting_data_file,
+                mobile_device=mobile_device,
+                connected_environments=connected_environments,
+                email_manager=email_manager,
+            )
+            if validation_error:
+                return validation_error
 
         env = await testzeus_client.environments.update_environment(
             environment_id,
@@ -1283,21 +1265,14 @@ async def update_environment(
             tags=tags,
             supporting_data_files=supporting_data_files,
             mobile_supporting_data_file=mobile_supporting_data_file,
+            mobile_device=mobile_device,
             connected_environments=connected_environments,
             email_manager=email_manager,
             source_code_integrations=source_code_integrations,
             agent_grounding_prompt=agent_grounding_prompt,
         )
 
-        updated = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "data": _mask_secret_values(env.data_content),
-            "tags": env.tags,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-            "updated": str(env.updated),
-        }
+        updated = _serialize_environment(env, detail=True)
 
         if ctx:
             await ctx.info(f"Updated environment: {env.name}")
@@ -1512,6 +1487,82 @@ def _format_supporting_files(entity: Any) -> list:
         getattr(entity, "supporting_data_files_info", None),
         entity.supporting_data_files,
     )
+
+
+def _is_mobile_device_type(device_type: str | None) -> bool:
+    return (device_type or "browser") in ("mobile-android", "mobile-ios")
+
+
+def _validate_environment_device_fields(
+    device_type: str | None,
+    *,
+    supporting_data_files: Any = None,
+    mobile_supporting_data_file: Any = None,
+    mobile_device: Any = None,
+    connected_environments: Any = None,
+    email_manager: Any = None,
+) -> str | None:
+    """Return an error message when fields conflict with device_type, else None.
+
+    browser: supporting_data_files / connected_environments / email_manager allowed;
+             mobile_supporting_data_file / mobile_device forbidden.
+    mobile-*: mobile_supporting_data_file / mobile_device allowed;
+              supporting_data_files / connected_environments / email_manager forbidden.
+    """
+    is_mobile = _is_mobile_device_type(device_type)
+    if is_mobile:
+        if supporting_data_files or connected_environments or email_manager:
+            return (
+                "Error: supporting_data_files, connected_environments, and "
+                "email_manager are not allowed for mobile environments"
+            )
+    else:
+        if mobile_supporting_data_file or mobile_device:
+            return (
+                "Error: mobile_supporting_data_file and mobile_device are only "
+                "allowed for mobile-android/mobile-ios environments"
+            )
+    return None
+
+
+def _serialize_environment(env: Any, *, detail: bool = False) -> dict[str, Any]:
+    """Serialize an environment, omitting fields that do not apply to device_type."""
+    device_type = getattr(env, "device_type", None) or "browser"
+    is_mobile = _is_mobile_device_type(device_type)
+
+    data: dict[str, Any] = {
+        "id": env.id,
+        "name": env.name,
+        "device_type": device_type,
+        "data": _mask_secret_values(env.data_content),
+        "tags": env.tags,
+        "created": str(env.created),
+        "updated": str(env.updated),
+    }
+
+    if is_mobile:
+        data["mobile_supporting_data_file"] = _format_files(
+            getattr(env, "mobile_supporting_data_file_info", None),
+            getattr(env, "mobile_supporting_data_file", None),
+        )
+        data["mobile_device"] = getattr(env, "mobile_device", None)
+    else:
+        data["supporting_data_files"] = _format_supporting_files(env)
+        if detail:
+            data["connected_environments"] = getattr(env, "connected_environments", None)
+            data["browser_auth_file"] = _format_files(
+                getattr(env, "browser_auth_file_info", None),
+                getattr(env, "browser_auth_file", None),
+            )
+            data["email_manager"] = getattr(env, "email_manager", None)
+
+    if detail:
+        data["source_code_integrations"] = getattr(env, "source_code_integrations", None)
+        data["agent_grounding_prompt"] = getattr(env, "agent_grounding_prompt", None)
+        data["tenant"] = getattr(env, "tenant", None)
+        data["modified_by"] = getattr(env, "modified_by", None)
+
+    return data
 
 
 def _mask_secret_values(content: Any) -> Any:
@@ -2850,16 +2901,19 @@ async def list_environments_resource() -> str:
 
         env_list = []
         for env in environments:
-            env_list.append(
-                {
-                    "id": env.id,
-                    "name": env.name,
-                    "device_type": env.device_type,
-                    "description": _mask_secret_values(env.data_content),
-                    "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
-                    "uri": f"environment://{env.id}",
-                }
-            )
+            summary = {
+                "id": env.id,
+                "name": env.name,
+                "device_type": env.device_type,
+                "description": _mask_secret_values(env.data_content),
+                "uri": f"environment://{env.id}",
+            }
+            if _is_mobile_device_type(env.device_type):
+                summary["mobile_device"] = getattr(env, "mobile_device", None)
+                summary["files"] = 1 if env.mobile_supporting_data_file else 0
+            else:
+                summary["files"] = len(env.supporting_data_files) if env.supporting_data_files else 0
+            env_list.append(summary)
 
         return json.dumps({"environments": env_list}, indent=2)
     except Exception as e:
@@ -2874,24 +2928,17 @@ async def get_environment_resource(environment_id: str) -> str:
 
     try:
         env = await testzeus_client.environments.get_one(environment_id)
-        env_data = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "description": _mask_secret_values(env.data_content),
-            "metadata": getattr(env, "metadata", None),
-            "created": str(env.created),
-            "updated": str(env.updated),
-            "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
-            "supporting_data_files": _format_supporting_files(env),
-            "mobile_supporting_data_file": _format_files(
-                env.mobile_supporting_data_file_info, env.mobile_supporting_data_file
-            ),
-            "browser_auth_file": _format_files(env.browser_auth_file_info, env.browser_auth_file),
-            "modified_by": env.modified_by,
-            "source_code_integrations": env.source_code_integrations,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-        }
+        env_data = _serialize_environment(env, detail=True)
+        env_data["description"] = env_data.pop("data", None)
+        env_data["files"] = (
+            len(env.supporting_data_files)
+            if not _is_mobile_device_type(env.device_type) and env.supporting_data_files
+            else (
+                1
+                if _is_mobile_device_type(env.device_type) and env.mobile_supporting_data_file
+                else 0
+            )
+        )
 
         return json.dumps(env_data, indent=2)
     except Exception as e:
