@@ -4302,11 +4302,11 @@ async def list_adversary_pathways(
         items = result.get("items", []) if isinstance(result, dict) else result
         pathway_list = [
             {
-                "id": p.get("id"),
-                "name": p.get("name"),
-                "objective": p.get("objective"),
-                "risk_level": p.get("risk_level"),
-                "agent_id": p.get("agent_id"),
+                "id": getattr(p, "id", None),
+                "name": getattr(p, "name", None),
+                "objective": getattr(p, "objective", None),
+                "risk_level": getattr(p, "risk_level", None),
+                "agent_id": getattr(p, "agent_id", None),
             }
             for p in items
         ]
@@ -4347,7 +4347,8 @@ async def generate_adversary_pathways(
         )
         if ctx:
             await ctx.info("Started pathway generation")
-        return f"Pathway generation started:\n{json.dumps(result, indent=2, cls=DateTimeEncoder)}"
+        payload = json.dumps(result.data, indent=2, cls=DateTimeEncoder)
+        return f"Pathway generation started:\n{payload}"
     except Exception as e:
         error_msg = f"Error generating adversary pathways: {str(e)}"
         if ctx:
@@ -4379,10 +4380,10 @@ async def run_adversary_simulation(
             agent_name=agent_name,
             run_as_profile=run_as_profile,
         )
-        group_id = result.get("id") if isinstance(result, dict) else None
+        group_id = getattr(result, "id", None)
         if ctx:
             await ctx.info(f"Started simulation run (group {group_id})")
-        payload = json.dumps(result, indent=2, cls=DateTimeEncoder)
+        payload = json.dumps(result.data, indent=2, cls=DateTimeEncoder)
         return f"Simulation run started (group {group_id}):\n{payload}"
     except Exception as e:
         error_msg = f"Error running adversary simulation: {str(e)}"
