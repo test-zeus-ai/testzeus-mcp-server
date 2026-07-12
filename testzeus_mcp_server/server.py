@@ -1046,7 +1046,19 @@ async def list_environments(
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
 ) -> str:
-    """List all environments in TestZeus."""
+    """List environments with pagination, sorting, and filtering.
+
+    Secret-typed values in data content are masked in the output.
+
+    Args:
+        page: 1-based page number.
+        per_page: Items per page (max 100).
+        filters: Exact match: {"name": "staging"}. Partial match and other
+            operators use the operator form: {"name": {"operator": "~", "value": "stag"}}.
+            Operators: =, !=, >, >=, <, <=, ~ (contains), !~ (not contains).
+            A list ORs values. Group with {"$and": [...]} / {"$or": [...]}.
+        sort: Field name to sort by; prefix with '-' for descending (e.g. "-created").
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1062,20 +1074,7 @@ async def list_environments(
 
         env_list = []
         for env in environments:
-            env_list.append(
-                {
-                    "id": env.id,
-                    "name": env.name,
-                    "device_type": env.device_type,
-                    "data": env.data_content,
-                    "status": env.status,
-                    "tags": env.tags,
-                    "supporting_data_files": env.supporting_data_files,
-                    "mobile_supporting_data_file": env.mobile_supporting_data_file,
-                    "created": str(env.created),
-                    "updated": str(env.updated),
-                }
-            )
+            env_list.append(_serialize_environment(env, detail=False))
 
         if ctx:
             await ctx.info(f"Found {len(env_list)} environments")
@@ -1096,25 +1095,7 @@ async def get_environment(environment_id_or_name: str, ctx: Context = None) -> s
 
     try:
         env = await testzeus_client.environments.get_one(environment_id_or_name)
-        env_data = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "data": env.data_content,
-            "status": env.status,
-            "tags": env.tags,
-            "supporting_data_files": env.supporting_data_files,
-            "mobile_supporting_data_file": env.mobile_supporting_data_file,
-            "connected_environments": env.connected_environments,
-            "email_manager": env.email_manager,
-            "source_code_integrations": env.source_code_integrations,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-            "device_config": env.device_config,
-            "created": str(env.created),
-            "updated": str(env.updated),
-            "tenant": env.tenant,
-            "modified_by": env.modified_by,
-        }
+        env_data = _serialize_environment(env, detail=True)
 
         if ctx:
             await ctx.info(f"Retrieved environment: {env.name}")
@@ -1131,35 +1112,42 @@ async def get_environment(environment_id_or_name: str, ctx: Context = None) -> s
 async def create_environment(
     name: str,
     device_type: Literal["browser", "mobile-android", "mobile-ios"] = "browser",
-    data_content: str | None = None,
-    status: Literal["draft", "ready", "deleted"] = "draft",
+    data_content: dict[str, Any] | str | None = None,
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
     mobile_supporting_data_file: str | None = None,
+    mobile_device: str | None = None,
     connected_environments: list[str] | None = None,
     email_manager: list[str] | None = None,
     source_code_integrations: list[str] | None = None,
-    agent_grounding_prompt: str | None = None,
-    device_config: str | None = None,
+    agent_grounding_prompt: dict[str, Any] | str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Create a new environment.
+    """Create a new environment. Returns the created record, including its ID.
 
-    device_type controls which fields are allowed:
-    - 'browser' (default): supports supporting_data_files, connected_environments, email_manager
-    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+    device_type controls which fields are allowed / shown:
+    - 'browser' (default): supporting_data_files, connected_environments, email_manager
+      (do not pass mobile_supporting_data_file or mobile_device)
+    - 'mobile-android'/'mobile-ios': mobile_supporting_data_file, mobile_device
+      (do not pass supporting_data_files or connected_environments)
 
-    data_content must be a JSON string in the format:
+    mobile_device is a device_pool ID or device_name (use list_device_pool to discover).
+    data_content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    tags/connected_environments/email_manager must be names of existing records, or IDs.
+    agent_grounding_prompt is a JSON object with 'test_creation' and/or
+    'test_execution' string keys; missing keys default to "".
     """
-    is_mobile = device_type in ("mobile-android", "mobile-ios")
-    if is_mobile and (supporting_data_files or connected_environments or email_manager):
-        return (
-            "Error: supporting_data_files, connected_environments, and "
-            "email_manager are not allowed for mobile environments"
-        )
-    if not is_mobile and mobile_supporting_data_file:
-        return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+    validation_error = _validate_environment_device_fields(
+        device_type,
+        supporting_data_files=supporting_data_files,
+        mobile_supporting_data_file=mobile_supporting_data_file,
+        mobile_device=mobile_device,
+        connected_environments=connected_environments,
+        email_manager=email_manager,
+    )
+    if validation_error:
+        return validation_error
 
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1169,21 +1157,22 @@ async def create_environment(
             name=name,
             device_type=device_type,
             data=data_content,
-            status=status,
             tags=tags,
             supporting_data_files=supporting_data_files,
             mobile_supporting_data_file=mobile_supporting_data_file,
+            mobile_device=mobile_device,
             connected_environments=connected_environments,
             email_manager=email_manager,
             source_code_integrations=source_code_integrations,
             agent_grounding_prompt=agent_grounding_prompt,
-            device_config=device_config,
         )
+
+        created = _serialize_environment(env, detail=True)
 
         if ctx:
             await ctx.info(f"Created environment: {name}")
 
-        return f"Successfully created environment '{name}' with ID: {env.id}"
+        return f"Successfully created environment:\n{json.dumps(created, indent=2)}"
     except Exception as e:
         error_msg = f"Error creating environment: {str(e)}"
         if ctx:
@@ -1196,78 +1185,99 @@ async def update_environment(
     environment_id: str,
     name: str | None = None,
     device_type: Literal["browser", "mobile-android", "mobile-ios"] | None = None,
-    data_content: str | None = None,
-    status: Literal["draft", "ready", "deleted"] | None = None,
+    data_content: dict[str, Any] | str | None = None,
     tags: list[str] | None = None,
     supporting_data_files: str | None = None,
     mobile_supporting_data_file: str | None = None,
+    mobile_device: str | None = None,
     connected_environments: list[str] | None = None,
     email_manager: list[str] | None = None,
     source_code_integrations: list[str] | None = None,
-    agent_grounding_prompt: str | None = None,
-    device_config: str | None = None,
+    agent_grounding_prompt: dict[str, Any] | str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Update an environment.
+    """Update an environment by its 15-character ID or exact name.
 
-    device_type controls which fields are allowed:
-    - 'browser': supports supporting_data_files, connected_environments, email_manager
-    - 'mobile-android'/'mobile-ios': supports mobile_supporting_data_file only
+    At least one field must be provided.
+    device_type controls which fields are allowed / shown:
+    - 'browser': supporting_data_files, connected_environments, email_manager
+      (do not pass mobile_supporting_data_file or mobile_device)
+    - 'mobile-android'/'mobile-ios': mobile_supporting_data_file, mobile_device
+      (do not pass supporting_data_files or connected_environments)
 
-    data_content must be a JSON string in the format:
+    mobile_device is a device_pool ID or device_name (use list_device_pool to discover).
+    data_content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    agent_grounding_prompt is a JSON object with 'test_creation' and/or
+    'test_execution' string keys; keys not provided keep their current value.
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
+    update_args = (
+        name,
+        device_type,
+        data_content,
+        tags,
+        supporting_data_files,
+        mobile_supporting_data_file,
+        mobile_device,
+        connected_environments,
+        email_manager,
+        source_code_integrations,
+        agent_grounding_prompt,
+    )
+    if all(arg is None for arg in update_args):
+        return "Error updating environment: provide at least one field to update"
+
     try:
-        browser_only_fields = supporting_data_files or connected_environments or email_manager
-        if browser_only_fields or mobile_supporting_data_file:
+        device_fields_touched = any(
+            v is not None
+            for v in (
+                supporting_data_files,
+                mobile_supporting_data_file,
+                mobile_device,
+                connected_environments,
+                email_manager,
+            )
+        )
+        if device_fields_touched or device_type is not None:
             effective_device_type = device_type
             if effective_device_type is None:
                 existing = await testzeus_client.environments.get_one(environment_id)
                 effective_device_type = existing.device_type or "browser"
-            is_mobile = effective_device_type in ("mobile-android", "mobile-ios")
-            if is_mobile and browser_only_fields:
-                return (
-                    "Error: supporting_data_files, connected_environments, and "
-                    "email_manager are not allowed for mobile environments"
-                )
-            if not is_mobile and mobile_supporting_data_file:
-                return "Error: mobile_supporting_data_file is only allowed for mobile environments"
+            validation_error = _validate_environment_device_fields(
+                effective_device_type,
+                supporting_data_files=supporting_data_files,
+                mobile_supporting_data_file=mobile_supporting_data_file,
+                mobile_device=mobile_device,
+                connected_environments=connected_environments,
+                email_manager=email_manager,
+            )
+            if validation_error:
+                return validation_error
 
-        data = {}
-        if name:
-            data["name"] = name
-        if device_type:
-            data["device_type"] = device_type
-        if data_content:
-            data["env_data"] = data_content
-        if status:
-            data["status"] = status
-        if tags:
-            data["tags"] = tags
-        if supporting_data_files:
-            data["supporting_data_files"] = supporting_data_files
-        if mobile_supporting_data_file:
-            data["mobile_supporting_data_file"] = mobile_supporting_data_file
-        if connected_environments is not None:
-            data["connected_environments"] = connected_environments
-        if email_manager is not None:
-            data["email_manager"] = email_manager
-        if source_code_integrations is not None:
-            data["source_code_integrations"] = source_code_integrations
-        if agent_grounding_prompt is not None:
-            data["agent_grounding_prompt"] = agent_grounding_prompt
-        if device_config is not None:
-            data["device_config"] = device_config
+        env = await testzeus_client.environments.update_environment(
+            environment_id,
+            name=name,
+            device_type=device_type,
+            env_data=data_content,
+            tags=tags,
+            supporting_data_files=supporting_data_files,
+            mobile_supporting_data_file=mobile_supporting_data_file,
+            mobile_device=mobile_device,
+            connected_environments=connected_environments,
+            email_manager=email_manager,
+            source_code_integrations=source_code_integrations,
+            agent_grounding_prompt=agent_grounding_prompt,
+        )
 
-        await testzeus_client.environments.update_environment(environment_id, **data)
+        updated = _serialize_environment(env, detail=True)
 
         if ctx:
-            await ctx.info(f"Updated environment: {name}")
+            await ctx.info(f"Updated environment: {env.name}")
 
-        return f"Successfully updated environment '{name}' with ID: {environment_id}"
+        return f"Successfully updated environment:\n{json.dumps(updated, indent=2)}"
 
     except Exception as e:
         error_msg = f"Error updating environment: {str(e)}"
@@ -1278,17 +1288,27 @@ async def update_environment(
 
 @mcp.tool()
 async def delete_environment(environment_id: str, ctx: Context = None) -> str:
-    """Delete an environment."""
+    """Delete an environment by its 15-character ID or exact name.
+
+    The response identifies exactly which environment was deleted (name and ID).
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        await testzeus_client.environments.delete(environment_id)
+        # Resolve first so the response can state exactly what was deleted,
+        # especially when a name (not an ID) was provided.
+        env = await testzeus_client.environments.get_one(environment_id)
+        await testzeus_client.environments.delete(env.id)
+
+        matched_note = ""
+        if env.id != environment_id:
+            matched_note = f" (matched by name from '{environment_id}')"
 
         if ctx:
-            await ctx.info(f"Deleted environment: {environment_id}")
+            await ctx.info(f"Deleted environment: {env.name} ({env.id})")
 
-        return f"Successfully deleted environment with ID: {environment_id}"
+        return f"Successfully deleted environment '{env.name}' with ID: {env.id}{matched_note}"
 
     except Exception as e:
         error_msg = f"Error deleting environment: {str(e)}"
@@ -1335,7 +1355,11 @@ async def add_environment_file(environment_id: str, file_path: str, ctx: Context
 
 @mcp.tool()
 async def remove_environment_file(environment_id: str, file_path: str, ctx: Context = None) -> str:
-    """Remove a environment file."""
+    """Remove a environment file.
+
+    file_path may be the stored file name, the original upload name, or a
+    local path to the originally uploaded file.
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1443,27 +1467,139 @@ async def get_device_pool_entry(device_id: str, ctx: Context = None) -> str:
         return error_msg
 
 
+def _format_files(files_info: Any, stored: Any) -> list:
+    """Render a file field as {display_name, name} pairs when the server
+    provides the original-name mapping, falling back to stored names.
+
+    Works for both multi-file fields (list) and single-file fields (str).
+    """
+    if files_info:
+        return files_info
+    if not stored:
+        return []
+    if isinstance(stored, str):
+        stored = [stored]
+    return [{"name": f} for f in stored]
+
+
+def _format_supporting_files(entity: Any) -> list:
+    return _format_files(
+        getattr(entity, "supporting_data_files_info", None),
+        entity.supporting_data_files,
+    )
+
+
+def _is_mobile_device_type(device_type: str | None) -> bool:
+    return (device_type or "browser") in ("mobile-android", "mobile-ios")
+
+
+def _validate_environment_device_fields(
+    device_type: str | None,
+    *,
+    supporting_data_files: Any = None,
+    mobile_supporting_data_file: Any = None,
+    mobile_device: Any = None,
+    connected_environments: Any = None,
+    email_manager: Any = None,
+) -> str | None:
+    """Return an error message when fields conflict with device_type, else None.
+
+    browser: supporting_data_files / connected_environments / email_manager allowed;
+             mobile_supporting_data_file / mobile_device forbidden.
+    mobile-*: mobile_supporting_data_file / mobile_device allowed;
+              supporting_data_files / connected_environments / email_manager forbidden.
+    """
+    is_mobile = _is_mobile_device_type(device_type)
+    if is_mobile:
+        if supporting_data_files or connected_environments or email_manager:
+            return (
+                "Error: supporting_data_files, connected_environments, and "
+                "email_manager are not allowed for mobile environments"
+            )
+    else:
+        if mobile_supporting_data_file or mobile_device:
+            return (
+                "Error: mobile_supporting_data_file and mobile_device are only "
+                "allowed for mobile-android/mobile-ios environments"
+            )
+    return None
+
+
+def _serialize_environment(env: Any, *, detail: bool = False) -> dict[str, Any]:
+    """Serialize an environment, omitting fields that do not apply to device_type."""
+    device_type = getattr(env, "device_type", None) or "browser"
+    is_mobile = _is_mobile_device_type(device_type)
+
+    data: dict[str, Any] = {
+        "id": env.id,
+        "name": env.name,
+        "device_type": device_type,
+        "data": _mask_secret_values(env.data_content),
+        "tags": env.tags,
+        "created": str(env.created),
+        "updated": str(env.updated),
+    }
+
+    if is_mobile:
+        data["mobile_supporting_data_file"] = _format_files(
+            getattr(env, "mobile_supporting_data_file_info", None),
+            getattr(env, "mobile_supporting_data_file", None),
+        )
+        data["mobile_device"] = getattr(env, "mobile_device", None)
+    else:
+        data["supporting_data_files"] = _format_supporting_files(env)
+        if detail:
+            data["connected_environments"] = getattr(env, "connected_environments", None)
+            data["browser_auth_file"] = _format_files(
+                getattr(env, "browser_auth_file_info", None),
+                getattr(env, "browser_auth_file", None),
+            )
+            data["email_manager"] = getattr(env, "email_manager", None)
+
+    if detail:
+        data["source_code_integrations"] = getattr(env, "source_code_integrations", None)
+        data["agent_grounding_prompt"] = getattr(env, "agent_grounding_prompt", None)
+        data["tenant"] = getattr(env, "tenant", None)
+        data["modified_by"] = getattr(env, "modified_by", None)
+
+    return data
+
+
+def _mask_secret_values(content: Any) -> Any:
+    """Mask the values of secret-typed items in test data content before display."""
+    if isinstance(content, dict) and isinstance(content.get("items"), list):
+        masked_items = []
+        for item in content["items"]:
+            if isinstance(item, dict) and item.get("type") == "secret":
+                item = {**item, "value": "********"}
+            masked_items.append(item)
+        return {**content, "items": masked_items}
+    return content
+
+
 @mcp.tool()
-async def get_test_data(test_id: str, ctx: Context = None) -> str:
-    """Get the test data for a specific test."""
+async def get_test_data(test_data_id: str, ctx: Context = None) -> str:
+    """Get a specific test data record by its 15-character ID or exact name.
+
+    Secret-typed values in the data content are masked in the output.
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        test = await testzeus_client.test_data.get_one(test_id)
+        test = await testzeus_client.test_data.get_one(test_data_id)
         test_data = {
             "id": test.id,
             "name": test.name,
-            "status": test.status,
             "tags": test.tags,
             "created": str(test.created),
             "updated": str(test.updated),
             "tenant": test.tenant,
             "modified_by": test.modified_by,
-            "data content": test.data_content,
-            "type": test.type,
+            "data_content": _mask_secret_values(test.data_content),
             "metadata": test.metadata,
-            "supporting data files": test.supporting_data_files,
+            "agent_grounding_prompt": test.agent_grounding_prompt,
+            "supporting_data_files": _format_supporting_files(test),
         }
 
         if ctx:
@@ -1480,17 +1616,19 @@ async def get_test_data(test_id: str, ctx: Context = None) -> str:
 @mcp.tool()
 async def create_test_data(
     name: str,
-    status: Literal["draft", "ready", "deleted"] = "draft",
-    content: str | None = None,
+    content: dict[str, Any] | str | None = None,
     tags: list[str] | None = None,
-    type: Literal["test", "design", "run"] = "test",
     supporting_data_files: str | None = None,
+    agent_grounding_prompt: dict[str, Any] | str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Create a new test data.
+    """Create a new test data record. Returns the created record, including its ID.
 
-    content must be a JSON string in the format:
+    content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    tags must be names of existing tags, or tag IDs.
+    agent_grounding_prompt is a JSON object with 'test_creation' and/or
+    'test_execution' string keys; missing keys default to "".
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
@@ -1498,17 +1636,26 @@ async def create_test_data(
     try:
         test_data = await testzeus_client.test_data.create_test_data(
             name=name,
-            status=status,
             content=content,
             tags=tags,
-            type=type,
+            type="test",
             supporting_data_files=supporting_data_files,
+            agent_grounding_prompt=agent_grounding_prompt,
         )
+
+        created = {
+            "id": test_data.id,
+            "name": test_data.name,
+            "tags": test_data.tags,
+            "data_content": _mask_secret_values(test_data.data_content),
+            "agent_grounding_prompt": test_data.agent_grounding_prompt,
+            "created": str(test_data.created),
+        }
 
         if ctx:
             await ctx.info(f"Created test data: {name}")
 
-        return f"Successfully created test data '{name}' with ID: {test_data.id}"
+        return f"Successfully created test data:\n{json.dumps(created, indent=2)}"
 
     except Exception as e:
         error_msg = f"Error creating test data: {str(e)}"
@@ -1519,17 +1666,30 @@ async def create_test_data(
 
 @mcp.tool()
 async def delete_test_data(test_data_id: str, ctx: Context = None) -> str:
-    """Delete a test data."""
+    """Delete a test data record by its 15-character ID or exact name.
+
+    The response identifies exactly which record was deleted (name and ID).
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        await testzeus_client.test_data.delete(test_data_id)
+        # Resolve first so the response can state exactly what was deleted,
+        # especially when a name (not an ID) was provided.
+        test_data = await testzeus_client.test_data.get_one(test_data_id)
+        await testzeus_client.test_data.delete(test_data.id)
+
+        matched_note = ""
+        if test_data.id != test_data_id:
+            matched_note = f" (matched by name from '{test_data_id}')"
 
         if ctx:
-            await ctx.info(f"Deleted test data: {test_data_id}")
+            await ctx.info(f"Deleted test data: {test_data.name} ({test_data.id})")
 
-        return f"Successfully deleted test data with ID: {test_data_id}"
+        return (
+            f"Successfully deleted test data '{test_data.name}' "
+            f"with ID: {test_data.id}{matched_note}"
+        )
 
     except Exception as e:
         error_msg = f"Error deleting test data: {str(e)}"
@@ -1542,42 +1702,54 @@ async def delete_test_data(test_data_id: str, ctx: Context = None) -> str:
 async def update_test_data(
     test_data_id: str,
     name: str | None = None,
-    status: Literal["draft", "ready", "deleted"] | None = None,
-    content: str | None = None,
+    content: dict[str, Any] | str | None = None,
     tags: list[str] | None = None,
-    type: Literal["test", "design", "run"] | None = None,
     supporting_data_files: str | None = None,
+    agent_grounding_prompt: dict[str, Any] | str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Update a test data.
+    """Update a test data record by its 15-character ID or exact name.
 
-    content must be a JSON string in the format:
+    At least one field must be provided.
+    content is a JSON object (or JSON string) in the format:
     {"items": [{"key": "name", "value": "val", "type": "variable|secret"}]}
+    tags must be names of existing tags, or tag IDs.
+    agent_grounding_prompt is a JSON object with 'test_creation' and/or
+    'test_execution' string keys; keys not provided keep their current value.
     """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
-    try:
-        data = {}
-        if name:
-            data["name"] = name
-        if status:
-            data["status"] = status
-        if content:
-            data["content"] = content
-        if tags:
-            data["tags"] = tags
-        if type:
-            data["type"] = type
-        if supporting_data_files:
-            data["supporting_data_files"] = supporting_data_files
+    update_args = (name, content, tags, supporting_data_files, agent_grounding_prompt)
+    if all(arg is None for arg in update_args):
+        return (
+            "Error updating test data: provide at least one field to update "
+            "(name, content, tags, supporting_data_files, or agent_grounding_prompt)"
+        )
 
-        await testzeus_client.test_data.update_test_data(test_data_id, **data)
+    try:
+        test_data = await testzeus_client.test_data.update_test_data(
+            test_data_id,
+            name=name,
+            content=content,
+            tags=tags,
+            supporting_data_files=supporting_data_files,
+            agent_grounding_prompt=agent_grounding_prompt,
+        )
+
+        updated = {
+            "id": test_data.id,
+            "name": test_data.name,
+            "tags": test_data.tags,
+            "data_content": _mask_secret_values(test_data.data_content),
+            "agent_grounding_prompt": test_data.agent_grounding_prompt,
+            "updated": str(test_data.updated),
+        }
 
         if ctx:
-            await ctx.info(f"Updated test data: {name}")
+            await ctx.info(f"Updated test data: {test_data.name}")
 
-        return f"Successfully updated test data with ID: {test_data_id}"
+        return f"Successfully updated test data:\n{json.dumps(updated, indent=2)}"
 
     except Exception as e:
         error_msg = f"Error updating test data: {str(e)}"
@@ -1594,7 +1766,19 @@ async def list_test_data(
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
 ) -> str:
-    """List all test data."""
+    """List test data with pagination, sorting, and filtering.
+
+    Secret-typed values in data content are masked in the output.
+
+    Args:
+        page: 1-based page number.
+        per_page: Items per page (max 100).
+        filters: Exact match: {"name": "smoke-data"}. Partial match and other
+            operators use the operator form: {"name": {"operator": "~", "value": "smoke"}}.
+            Operators: =, !=, >, >=, <, <=, ~ (contains), !~ (not contains).
+            A list ORs values. Group with {"$and": [...]} / {"$or": [...]}.
+        sort: Field name to sort by; prefix with '-' for descending (e.g. "-created").
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -1614,11 +1798,9 @@ async def list_test_data(
                 {
                     "id": test_data.id,
                     "name": test_data.name,
-                    "status": test_data.status,
                     "tags": test_data.tags,
-                    "type": test_data.type,
-                    "data_content": test_data.data_content,
-                    "supporting_data_files": test_data.supporting_data_files,
+                    "data_content": _mask_secret_values(test_data.data_content),
+                    "supporting_data_files": _format_supporting_files(test_data),
                     "created": str(test_data.created),
                     "updated": str(test_data.updated),
                     "tenant": test_data.tenant,
@@ -1676,7 +1858,11 @@ async def add_test_data_file(test_data_id: str, file_path: str, ctx: Context = N
 
 @mcp.tool()
 async def remove_test_data_file(test_data_id: str, file_path: str, ctx: Context = None) -> str:
-    """Remove a test data file."""
+    """Remove a test data file.
+
+    file_path may be the stored file name, the original upload name, or a
+    local path to the originally uploaded file.
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -2178,17 +2364,24 @@ async def delete_connected_environment(connected_env_id: str, ctx: Context = Non
 
 @mcp.tool()
 async def create_tags(name: str, value: str | None = None, ctx: Context = None) -> str:
-    """Create a new tag."""
+    """Create a single tag. Returns the created tag, including its ID."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        _ = await testzeus_client.tags.create_tag(name=name, value=value)
+        tag = await testzeus_client.tags.create_tag(name=name, value=value)
+
+        tag_data = {
+            "id": tag.id,
+            "name": tag.name,
+            "value": tag.value,
+            "created": str(tag.created),
+        }
 
         if ctx:
             await ctx.info(f"Created tag: {name}")
 
-        return f"Successfully created tag '{name}' with value: {value}"
+        return f"Successfully created tag:\n{json.dumps(tag_data, indent=2)}"
 
     except Exception as e:
         error_msg = f"Error creating tag: {str(e)}"
@@ -2205,7 +2398,17 @@ async def list_tags(
     filters: dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
 ) -> str:
-    """List all tags."""
+    """List tags with pagination, sorting, and filtering.
+
+    Args:
+        page: 1-based page number.
+        per_page: Items per page (max 100).
+        filters: Exact match: {"name": "smoke"}. Partial match and other
+            operators use the operator form: {"name": {"operator": "~", "value": "smoke"}}.
+            Operators: =, !=, >, >=, <, <=, ~ (contains), !~ (not contains).
+            A list ORs values: {"name": ["a", "b"]}. Group with {"$and": [...]} / {"$or": [...]}.
+        sort: Field name to sort by; prefix with '-' for descending (e.g. "-created").
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -2247,7 +2450,7 @@ async def list_tags(
 
 @mcp.tool()
 async def get_tag(tag_id: str, ctx: Context = None) -> str:
-    """Get a specific tag."""
+    """Get a specific tag by its 15-character ID or exact name."""
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
@@ -2278,17 +2481,25 @@ async def get_tag(tag_id: str, ctx: Context = None) -> str:
 
 @mcp.tool()
 async def delete_tag(tag_id: str, ctx: Context = None) -> str:
-    """Delete a tag."""
+    """Delete a tag by its 15-character ID or exact name.
+
+    The response identifies exactly which tag was deleted (name and ID).
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        await testzeus_client.tags.delete(tag_id)
+        # Resolve first so the response can state exactly what was deleted,
+        # especially when a name (not an ID) was provided.
+        tag = await testzeus_client.tags.get_one(tag_id)
+        await testzeus_client.tags.delete(tag.id)
+
+        matched_note = "" if tag.id == tag_id else f" (matched by name from '{tag_id}')"
 
         if ctx:
-            await ctx.info(f"Deleted tag: {tag_id}")
+            await ctx.info(f"Deleted tag: {tag.name} ({tag.id})")
 
-        return f"Successfully deleted tag with ID: {tag_id}"
+        return f"Successfully deleted tag '{tag.name}' with ID: {tag.id}{matched_note}"
 
     except Exception as e:
         error_msg = f"Error deleting tag: {str(e)}"
@@ -2301,23 +2512,30 @@ async def delete_tag(tag_id: str, ctx: Context = None) -> str:
 async def update_tag(
     tag_id: str, name: str | None = None, value: str | None = None, ctx: Context = None
 ) -> str:
-    """Update a tag."""
+    """Update a tag's name and/or value by its 15-character ID or exact name.
+
+    At least one of name or value must be provided. Pass value="" to clear the value.
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
-    try:
-        data = {}
-        if name:
-            data["name"] = name
-        if value:
-            data["value"] = value
+    if name is None and value is None:
+        return "Error updating tag: provide at least one of 'name' or 'value' to update"
 
-        await testzeus_client.tags.update_tag(tag_id, **data)
+    try:
+        tag = await testzeus_client.tags.update_tag(tag_id, name=name, value=value)
+
+        tag_data = {
+            "id": tag.id,
+            "name": tag.name,
+            "value": tag.value,
+            "updated": str(tag.updated),
+        }
 
         if ctx:
-            await ctx.info(f"Updated tag: {name}")
+            await ctx.info(f"Updated tag: {tag.name}")
 
-        return f"Successfully updated tag with ID: {tag_id}"
+        return f"Successfully updated tag:\n{json.dumps(tag_data, indent=2)}"
 
     except Exception as e:
         error_msg = f"Error updating tag: {str(e)}"
@@ -2683,17 +2901,20 @@ async def list_environments_resource() -> str:
 
         env_list = []
         for env in environments:
-            env_list.append(
-                {
-                    "id": env.id,
-                    "name": env.name,
-                    "device_type": env.device_type,
-                    "status": env.status,
-                    "description": env.data_content,
-                    "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
-                    "uri": f"environment://{env.id}",
-                }
-            )
+            summary = {
+                "id": env.id,
+                "name": env.name,
+                "device_type": env.device_type,
+                "description": _mask_secret_values(env.data_content),
+                "uri": f"environment://{env.id}",
+            }
+            if _is_mobile_device_type(env.device_type):
+                summary["mobile_device"] = getattr(env, "mobile_device", None)
+                summary["files"] = 1 if env.mobile_supporting_data_file else 0
+            else:
+                files = env.supporting_data_files
+                summary["files"] = len(files) if files else 0
+            env_list.append(summary)
 
         return json.dumps({"environments": env_list}, indent=2)
     except Exception as e:
@@ -2708,21 +2929,17 @@ async def get_environment_resource(environment_id: str) -> str:
 
     try:
         env = await testzeus_client.environments.get_one(environment_id)
-        env_data = {
-            "id": env.id,
-            "name": env.name,
-            "device_type": env.device_type,
-            "description": env.data_content,
-            "metadata": getattr(env, "metadata", None),
-            "created": str(env.created),
-            "updated": str(env.updated),
-            "files": len(env.supporting_data_files) if env.supporting_data_files else 0,
-            "mobile_supporting_data_file": env.mobile_supporting_data_file,
-            "modified_by": env.modified_by,
-            "source_code_integrations": env.source_code_integrations,
-            "agent_grounding_prompt": env.agent_grounding_prompt,
-            "device_config": env.device_config,
-        }
+        env_data = _serialize_environment(env, detail=True)
+        env_data["description"] = env_data.pop("data", None)
+        env_data["files"] = (
+            len(env.supporting_data_files)
+            if not _is_mobile_device_type(env.device_type) and env.supporting_data_files
+            else (
+                1
+                if _is_mobile_device_type(env.device_type) and env.mobile_supporting_data_file
+                else 0
+            )
+        )
 
         return json.dumps(env_data, indent=2)
     except Exception as e:
@@ -2803,10 +3020,9 @@ async def list_test_data_resource() -> str:
                 {
                     "id": test_data.id,
                     "name": test_data.name,
-                    "status": test_data.status,
                     "tags": test_data.tags,
-                    "data content": test_data.data_content,
-                    "files": len(test_data.supporting_data_files),
+                    "data_content": _mask_secret_values(test_data.data_content),
+                    "files": len(test_data.supporting_data_files or []),
                     "uri": f"test-data://{test_data.id}",
                 }
             )
@@ -2827,14 +3043,12 @@ async def get_test_data_resource(test_data_id: str) -> str:
         test_data_data = {
             "id": test_data.id,
             "name": test_data.name,
-            "status": test_data.status,
             "tags": test_data.tags,
-            "type": test_data.type,
-            "data content": test_data.data_content,
-            "supporting data files": test_data.supporting_data_files,
+            "data_content": _mask_secret_values(test_data.data_content),
+            "supporting_data_files": _format_supporting_files(test_data),
             "created": str(test_data.created),
             "updated": str(test_data.updated),
-            "files count": len(test_data.supporting_data_files),
+            "files_count": len(test_data.supporting_data_files or []),
             "modified_by": test_data.modified_by,
         }
 
