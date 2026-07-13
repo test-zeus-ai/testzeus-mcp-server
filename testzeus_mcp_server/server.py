@@ -4409,6 +4409,712 @@ async def get_test_report_schedule_resource(schedule_id: str) -> str:
 
 
 # =====================================================================
+# SDK-parity tools: knowledge bases, extensions, AI generator, suite
+# schedules, suite node run (get), connected-environment file ops.
+# =====================================================================
+
+
+# ----------------------------- Knowledge bases -----------------------------
+
+
+@mcp.tool()
+async def list_knowledge_bases(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all knowledge bases in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.knowledge_bases.get_list(**params)
+        items = result.get("items", [])
+        kb_list = [
+            {
+                "id": kb.id,
+                "name": getattr(kb, "name", None),
+                "source": getattr(kb, "source", None),
+                "description": getattr(kb, "description", None),
+                "status": getattr(kb, "status", None),
+            }
+            for kb in items
+        ]
+        if ctx:
+            await ctx.info(f"Found {len(kb_list)} knowledge bases")
+        return f"Found {len(kb_list)} knowledge bases:\n{json.dumps(kb_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing knowledge bases: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_knowledge_base(knowledge_base_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific knowledge base by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        kb = await testzeus_client.knowledge_bases.get_one(knowledge_base_id_or_name)
+        kb_data = {
+            "id": kb.id,
+            "name": getattr(kb, "name", None),
+            "source": getattr(kb, "source", None),
+            "description": getattr(kb, "description", None),
+            "status": getattr(kb, "status", None),
+            "tenant": getattr(kb, "tenant", None),
+            "modified_by": getattr(kb, "modified_by", None),
+            "created": str(getattr(kb, "created", None)),
+            "updated": str(getattr(kb, "updated", None)),
+        }
+        if ctx:
+            await ctx.info(f"Retrieved knowledge base: {kb_data['name']}")
+        return f"Knowledge base details:\n{json.dumps(kb_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting knowledge base: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_knowledge_base(
+    name: str,
+    source: str | None = None,
+    description: str | None = None,
+    status: Literal["draft", "ready", "deleted"] = "draft",
+    ctx: Context = None,
+) -> str:
+    """Create a new knowledge base."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {"name": name, "status": status}
+        if source is not None:
+            data["source"] = source
+        if description is not None:
+            data["description"] = description
+        kb = await testzeus_client.knowledge_bases.create(data)
+        if ctx:
+            await ctx.info(f"Created knowledge base: {name}")
+        return f"Successfully created knowledge base '{name}' with ID: {kb.id}"
+    except Exception as e:
+        error_msg = f"Error creating knowledge base: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_knowledge_base(
+    knowledge_base_id: str,
+    name: str | None = None,
+    source: str | None = None,
+    description: str | None = None,
+    status: Literal["draft", "ready", "deleted"] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update a knowledge base."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {}
+        if name:
+            data["name"] = name
+        if source is not None:
+            data["source"] = source
+        if description is not None:
+            data["description"] = description
+        if status:
+            data["status"] = status
+        await testzeus_client.knowledge_bases.update(knowledge_base_id, data)
+        if ctx:
+            await ctx.info(f"Updated knowledge base: {knowledge_base_id}")
+        return f"Successfully updated knowledge base with ID: {knowledge_base_id}"
+    except Exception as e:
+        error_msg = f"Error updating knowledge base: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_knowledge_base(knowledge_base_id: str, ctx: Context = None) -> str:
+    """Delete a knowledge base."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        await testzeus_client.knowledge_bases.delete(knowledge_base_id)
+        if ctx:
+            await ctx.info(f"Deleted knowledge base: {knowledge_base_id}")
+        return f"Successfully deleted knowledge base with ID: {knowledge_base_id}"
+    except Exception as e:
+        error_msg = f"Error deleting knowledge base: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ------------------------------- Extensions --------------------------------
+
+
+@mcp.tool()
+async def list_extensions(
+    page: int = 1,
+    per_page: int = 50,
+    ctx: Context = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
+) -> str:
+    """List all extensions in TestZeus."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        params = {"page": page, "per_page": min(per_page, 100)}
+        if filters:
+            params["filters"] = filters
+        if sort:
+            params["sort"] = sort
+        result = await testzeus_client.extensions.get_list(**params)
+        items = result.get("items", [])
+        ext_list = [
+            {
+                "id": ext.id,
+                "name": getattr(ext, "name", None),
+                "data_content": getattr(ext, "data_content", None),
+                "response": getattr(ext, "response", None),
+                "submit": getattr(ext, "submit", None),
+            }
+            for ext in items
+        ]
+        if ctx:
+            await ctx.info(f"Found {len(ext_list)} extensions")
+        return f"Found {len(ext_list)} extensions:\n{json.dumps(ext_list, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error listing extensions: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def get_extension(extension_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific extension by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        ext = await testzeus_client.extensions.get_one(extension_id_or_name)
+        ext_data = {
+            "id": ext.id,
+            "name": getattr(ext, "name", None),
+            "data_content": getattr(ext, "data_content", None),
+            "response": getattr(ext, "response", None),
+            "metadata": getattr(ext, "metadata", None),
+            "submit": getattr(ext, "submit", None),
+            "tenant": getattr(ext, "tenant", None),
+            "modified_by": getattr(ext, "modified_by", None),
+            "created": str(getattr(ext, "created", None)),
+            "updated": str(getattr(ext, "updated", None)),
+        }
+        if ctx:
+            await ctx.info(f"Retrieved extension: {ext_data['name']}")
+        return f"Extension details:\n{json.dumps(ext_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting extension: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_extension(
+    name: str,
+    data_content: str | None = None,
+    submit: bool = False,
+    metadata: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new extension."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {"name": name, "submit": submit}
+        if data_content is not None:
+            data["data_content"] = data_content
+        if metadata is not None:
+            data["metadata"] = metadata
+        ext = await testzeus_client.extensions.create(data)
+        if ctx:
+            await ctx.info(f"Created extension: {name}")
+        return f"Successfully created extension '{name}' with ID: {ext.id}"
+    except Exception as e:
+        error_msg = f"Error creating extension: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_extension(
+    extension_id: str,
+    name: str | None = None,
+    data_content: str | None = None,
+    submit: bool | None = None,
+    metadata: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update an extension."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {}
+        if name:
+            data["name"] = name
+        if data_content is not None:
+            data["data_content"] = data_content
+        if submit is not None:
+            data["submit"] = submit
+        if metadata is not None:
+            data["metadata"] = metadata
+        await testzeus_client.extensions.update(extension_id, data)
+        if ctx:
+            await ctx.info(f"Updated extension: {extension_id}")
+        return f"Successfully updated extension with ID: {extension_id}"
+    except Exception as e:
+        error_msg = f"Error updating extension: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_extension(extension_id: str, ctx: Context = None) -> str:
+    """Delete an extension."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        await testzeus_client.extensions.delete(extension_id)
+        if ctx:
+            await ctx.info(f"Deleted extension: {extension_id}")
+        return f"Successfully deleted extension with ID: {extension_id}"
+    except Exception as e:
+        error_msg = f"Error deleting extension: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ---------------------------- AI test generator ----------------------------
+
+
+@mcp.tool()
+async def generate_test(
+    user_prompt: str,
+    test_feature: str | None = None,
+    environment: str | None = None,
+    test_data: list[str] | None = None,
+    num_of_testcases: int | None = None,
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
+    submit: bool = True,
+    ctx: Context = None,
+) -> str:
+    """Generate test case(s) from a natural-language prompt using the TestZeus AI generator.
+
+    Creates a tests_ai_generator record; with submit=True the platform runs generation.
+    """
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {
+            "user_prompt": user_prompt,
+            "reasoning_effort": reasoning_effort,
+            "submit": submit,
+        }
+        if test_feature is not None:
+            data["test_feature"] = test_feature
+        if environment is not None:
+            data["environment"] = environment
+        if test_data is not None:
+            data["test_data"] = test_data
+        if num_of_testcases is not None:
+            data["num_of_testcases"] = num_of_testcases
+        gen = await testzeus_client.tests_ai_generator.create(data)
+        if ctx:
+            await ctx.info("Submitted AI test generation request")
+        return f"Successfully submitted AI test generation request with ID: {gen.id}"
+    except Exception as e:
+        error_msg = f"Error generating test: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# --------------------------- Test suite schedules --------------------------
+# (list_test_suite_schedules already exists above)
+
+
+@mcp.tool()
+async def get_test_suite_schedule(schedule_id_or_name: str, ctx: Context = None) -> str:
+    """Get a specific test suite schedule by ID or name."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        sc = await testzeus_client.test_suite_schedules.get_one(schedule_id_or_name)
+        sc_data = {
+            "id": sc.id,
+            "name": getattr(sc, "name", None),
+            "display_name": getattr(sc, "display_name", None),
+            "test_suite": getattr(sc, "test_suite", None),
+            "cron_expression": getattr(sc, "cron_expression", None),
+            "is_active": getattr(sc, "is_active", None),
+            "environment": getattr(sc, "environment", None),
+            "notification_channels": getattr(sc, "notification_channels", None),
+            "next_run_at": str(getattr(sc, "next_run_at", None)),
+            "last_run_at": str(getattr(sc, "last_run_at", None)),
+        }
+        if ctx:
+            await ctx.info(f"Retrieved test suite schedule: {sc_data['name']}")
+        return f"Test suite schedule details:\n{json.dumps(sc_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting test suite schedule: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def create_test_suite_schedule(
+    name: str,
+    test_suite: str,
+    cron_expression: str,
+    environment: str | None = None,
+    is_active: bool = True,
+    notification_channels: list[str] | None = None,
+    display_name: str | None = None,
+    input_values: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create a new test suite schedule (cron-based)."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {
+            "name": name,
+            "test_suite": test_suite,
+            "cron_expression": cron_expression,
+            "is_active": is_active,
+        }
+        if environment is not None:
+            data["environment"] = environment
+        if notification_channels is not None:
+            data["notification_channels"] = notification_channels
+        if display_name is not None:
+            data["display_name"] = display_name
+        if input_values is not None:
+            data["input_values"] = input_values
+        sc = await testzeus_client.test_suite_schedules.create(data)
+        if ctx:
+            await ctx.info(f"Created test suite schedule: {name}")
+        return f"Successfully created test suite schedule '{name}' with ID: {sc.id}"
+    except Exception as e:
+        error_msg = f"Error creating test suite schedule: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def update_test_suite_schedule(
+    schedule_id: str,
+    name: str | None = None,
+    test_suite: str | None = None,
+    cron_expression: str | None = None,
+    environment: str | None = None,
+    is_active: bool | None = None,
+    notification_channels: list[str] | None = None,
+    display_name: str | None = None,
+    input_values: dict[str, Any] | None = None,
+    ctx: Context = None,
+) -> str:
+    """Update a test suite schedule."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        data: dict[str, Any] = {}
+        if name:
+            data["name"] = name
+        if test_suite:
+            data["test_suite"] = test_suite
+        if cron_expression:
+            data["cron_expression"] = cron_expression
+        if environment is not None:
+            data["environment"] = environment
+        if is_active is not None:
+            data["is_active"] = is_active
+        if notification_channels is not None:
+            data["notification_channels"] = notification_channels
+        if display_name is not None:
+            data["display_name"] = display_name
+        if input_values is not None:
+            data["input_values"] = input_values
+        await testzeus_client.test_suite_schedules.update(schedule_id, data)
+        if ctx:
+            await ctx.info(f"Updated test suite schedule: {schedule_id}")
+        return f"Successfully updated test suite schedule with ID: {schedule_id}"
+    except Exception as e:
+        error_msg = f"Error updating test suite schedule: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def delete_test_suite_schedule(schedule_id: str, ctx: Context = None) -> str:
+    """Delete a test suite schedule."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        await testzeus_client.test_suite_schedules.delete(schedule_id)
+        if ctx:
+            await ctx.info(f"Deleted test suite schedule: {schedule_id}")
+        return f"Successfully deleted test suite schedule with ID: {schedule_id}"
+    except Exception as e:
+        error_msg = f"Error deleting test suite schedule: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ------------------------ Test suite node runs (get) -----------------------
+# (list_test_suite_node_runs already exists above)
+
+
+@mcp.tool()
+async def get_test_suite_node_run(node_run_id: str, ctx: Context = None) -> str:
+    """Get a specific test suite node run by ID."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    try:
+        nr = await testzeus_client.test_suite_node_runs.get_one(node_run_id)
+        nr_data = {
+            "id": nr.id,
+            "test_suite_run": getattr(nr, "test_suite_run", None),
+            "node_id": getattr(nr, "node_id", None),
+            "status": getattr(nr, "status", None),
+            "test_run": getattr(nr, "test_run", None),
+            "retry_count": getattr(nr, "retry_count", None),
+            "max_retries": getattr(nr, "max_retries", None),
+            "started_at": str(getattr(nr, "started_at", None)),
+            "completed_at": str(getattr(nr, "completed_at", None)),
+        }
+        if ctx:
+            await ctx.info(f"Retrieved test suite node run: {node_run_id}")
+        return f"Test suite node run details:\n{json.dumps(nr_data, indent=2)}"
+    except Exception as e:
+        error_msg = f"Error getting test suite node run: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# ---------------------- Connected-environment file ops ---------------------
+# (create/get/list/update/delete_connected_environment already exist above)
+
+
+@mcp.tool()
+async def add_connected_environment_code_file(
+    connected_environment_id: str, file_path: str, ctx: Context = None
+) -> str:
+    """Add a code file to a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.add_code_file(cid, file_path)
+        if ctx:
+            await ctx.info(f"Added code file to connected environment: {cid}")
+        return f"Successfully added code file to connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error adding connected environment code file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_connected_environment_code_file(
+    connected_environment_id: str, file_name: str, ctx: Context = None
+) -> str:
+    """Remove a code file from a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.remove_code_file(cid, file_name)
+        if ctx:
+            await ctx.info(f"Removed code file from connected environment: {cid}")
+        return f"Successfully removed code file from connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error removing connected environment code file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_all_connected_environment_code_files(
+    connected_environment_id: str, ctx: Context = None
+) -> str:
+    """Remove all code files from a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.remove_all_code_files(cid)
+        if ctx:
+            await ctx.info(f"Removed all code files from connected environment: {cid}")
+        return f"Successfully removed all code files from connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error removing all connected environment code files: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def add_connected_environment_metadata_file(
+    connected_environment_id: str, file_path: str, ctx: Context = None
+) -> str:
+    """Add a metadata file to a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.add_metadata_file(cid, file_path)
+        if ctx:
+            await ctx.info(f"Added metadata file to connected environment: {cid}")
+        return f"Successfully added metadata file to connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error adding connected environment metadata file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_connected_environment_metadata_file(
+    connected_environment_id: str, file_name: str, ctx: Context = None
+) -> str:
+    """Remove a metadata file from a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.remove_metadata_file(cid, file_name)
+        if ctx:
+            await ctx.info(f"Removed metadata file from connected environment: {cid}")
+        return f"Successfully removed metadata file from connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error removing connected environment metadata file: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+@mcp.tool()
+async def remove_all_connected_environment_metadata_files(
+    connected_environment_id: str, ctx: Context = None
+) -> str:
+    """Remove all metadata files from a connected environment."""
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    if testzeus_client is None:
+        return "Authentication failed - unable to connect to TestZeus"
+
+    cid = connected_environment_id
+    try:
+        await testzeus_client.connected_environments.remove_all_metadata_files(cid)
+        if ctx:
+            await ctx.info(f"Removed all metadata files from connected environment: {cid}")
+        return f"Successfully removed all metadata files from connected environment {cid}"
+    except Exception as e:
+        error_msg = f"Error removing all connected environment metadata files: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+# =====================================================================
 # Agent Harness: adversarial testing of AI agents (Salesforce Agentforce).
 # Wraps the SDK's client.agent_harness manager. Flow: list agents ->
 # list/generate pathways -> run simulation -> poll status -> results.
