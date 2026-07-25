@@ -25,6 +25,8 @@ make run           # uv run testzeus-mcp-server
 - Formatter/linter is **ruff**, line length **100** (not 200 like the SDK/CLI).
   CI runs `ruff check` + `ruff format --check` as blocking gates; `pytest` is
   non-blocking. Run `make fmt` before committing.
+- `make lint` is **not** read-only — `lint: fmt`, so it runs `ruff format` then
+  `ruff check --fix`, both of which mutate the tree, rather than only checking.
 - Keep the `testzeus-sdk` dependency floor high enough that a stale SDK missing
   a needed capability can't satisfy the install.
 
