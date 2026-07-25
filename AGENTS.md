@@ -23,10 +23,16 @@ make run           # uv run testzeus-mcp-server
 ```
 
 - Formatter/linter is **ruff**, line length **100** (not 200 like the SDK/CLI).
-  CI runs `ruff check` + `ruff format --check` as blocking gates; `pytest` is
-  non-blocking. Run `make fmt` before committing.
-- `make lint` is **not** read-only — `lint: fmt`, so it runs `ruff format` then
-  `ruff check --fix`, both of which mutate the tree, rather than only checking.
+  Run `make fmt` before committing.
+- CI (`.github/workflows/ci.yml`) has **three blocking gates**: `ruff check`,
+  `ruff format --check`, and `uv build` ("Check build" — a broken build fails
+  CI). `pytest` is non-blocking (`|| echo`).
+- `make lint` is **not** read-only and does **not** match CI: `lint: fmt`, so it
+  runs `ruff format` then `ruff check --fix` — both mutate the tree, and the
+  `--fix` auto-repairs lints. **CI runs plain `ruff check` (no `--fix`)**, so an
+  unfixable lint passes locally but fails CI. After `make lint`, double-check
+  with a plain `uv run ruff check` before pushing. (`make test` chains
+  `test: lint`, so it reformats too.)
 - Keep the `testzeus-sdk` dependency floor high enough that a stale SDK missing
   a needed capability can't satisfy the install.
 
