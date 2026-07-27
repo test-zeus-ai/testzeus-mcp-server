@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "testzeus-mcp-server"
-version = "2.0.1"
+version = "2.0.2"
 description = "FastMCP server for TestZeus SDK - enables Claude and other MCP clients to conduct intelligent testing activities"
 authors = [
     {name = "TestZeus Team", email = "info@testzeus.com"}
