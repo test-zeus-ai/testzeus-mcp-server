@@ -127,8 +127,8 @@ async def list_tests(
                 {
                     "id": test.id,
                     "name": test.name,
-                    "status": test.status,
                     "testing_type": test.testing_type,
+                    "execution_mode": test.execution_mode,
                     "test_feature": test.test_feature,
                     "tags": test.tags,
                     "environment": test.environment,
@@ -159,14 +159,15 @@ async def get_test(test_id_or_name: str, ctx: Context = None) -> str:
         test_data = {
             "id": test.id,
             "name": test.name,
-            "status": test.status,
             "testing_type": test.testing_type,
+            "execution_mode": test.execution_mode,
             "test_feature": test.test_feature,
             "tags": test.tags,
             "test_data": test.test_data,
             "environment": test.environment,
             "config": getattr(test, "config", None),
             "metadata": getattr(test, "metadata", None),
+            "is_deleted": getattr(test, "is_deleted", None),
             "created": str(test.created),
             "updated": str(test.updated),
             "tenant": test.tenant,
@@ -189,7 +190,6 @@ async def create_test(
     name: str,
     test_feature: str,
     testing_type: Literal["web", "mobile"] = "web",
-    status: str = "draft",
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
@@ -213,7 +213,6 @@ async def create_test(
             name=name,
             test_feature=test_feature,
             testing_type=testing_type,
-            status=status,
             test_params=test_params,
             test_data=test_data,
             tags=tags,
@@ -239,7 +238,6 @@ async def update_test(
     name: str | None = None,
     test_feature: str | None = None,
     testing_type: Literal["web", "mobile"] | None = None,
-    status: str | None = None,
     test_data: list[str] | None = None,
     tags: list[str] | None = None,
     environment: str | None = None,
@@ -266,8 +264,6 @@ async def update_test(
             data["test_feature"] = test_feature
         if testing_type:
             data["testing_type"] = testing_type
-        if status is not None:
-            data["status"] = status
         if test_data is not None:
             data["test_data"] = test_data
         if tags is not None:
@@ -2794,8 +2790,8 @@ async def list_tests_resource() -> str:
                 {
                     "id": test.id,
                     "name": test.name,
-                    "status": test.status,
                     "testing_type": test.testing_type,
+                    "execution_mode": test.execution_mode,
                     "test_feature": test.test_feature,
                     "uri": f"test://{test.id}",
                 }
@@ -2817,14 +2813,15 @@ async def get_test_resource(test_id: str) -> str:
         test_data = {
             "id": test.id,
             "name": test.name,
-            "status": test.status,
             "testing_type": test.testing_type,
+            "execution_mode": test.execution_mode,
             "test_feature": test.test_feature,
             "tags": test.tags,
             "test_data": test.test_data,
             "environment": test.environment,
             "config": getattr(test, "config", None),
             "metadata": getattr(test, "metadata", None),
+            "is_deleted": getattr(test, "is_deleted", None),
             "created": str(test.created),
             "updated": str(test.updated),
             "modified_by": test.modified_by,
