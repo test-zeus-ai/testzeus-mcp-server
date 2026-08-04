@@ -2273,62 +2273,21 @@ async def get_connected_environment(connected_env_id_or_name: str, ctx: Context 
 
 
 @mcp.tool()
-async def create_connected_environment(
-    name: str,
-    connection: str | None = None,
-    tags: list[str] | None = None,
-    metadata: dict[str, Any] | None = None,
-    ctx: Context = None,
-) -> str:
-    """Create a new connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-
-    try:
-        env = await testzeus_client.connected_environments.create_connected_environment(
-            name=name,
-            connection=connection,
-            tags=tags,
-            metadata=metadata,
-        )
-
-        if ctx:
-            await ctx.info(f"Created connected environment: {name}")
-
-        return f"Successfully created connected environment '{name}' with ID: {env.id}"
-    except Exception as e:
-        error_msg = f"Error creating connected environment: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
 async def update_connected_environment(
     connected_env_id: str,
-    name: str | None = None,
-    connection: str | None = None,
-    tags: list[str] | None = None,
-    metadata: dict[str, Any] | None = None,
+    name: str,
     ctx: Context = None,
 ) -> str:
-    """Update a connected environment."""
+    """Update a connected environment's name.
+
+    Only the name of a connected environment can be changed.
+    """
     if not await ensure_authenticated():
         await authenticate_testzeus()
 
     try:
-        data = {}
-        if name:
-            data["name"] = name
-        if connection:
-            data["connection"] = connection
-        if tags:
-            data["tags"] = tags
-        if metadata:
-            data["metadata"] = metadata
-
         await testzeus_client.connected_environments.update_connected_environment(
-            connected_env_id, **data
+            connected_env_id, name=name
         )
 
         if ctx:
@@ -2337,26 +2296,6 @@ async def update_connected_environment(
         return f"Successfully updated connected environment with ID: {connected_env_id}"
     except Exception as e:
         error_msg = f"Error updating connected environment: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def delete_connected_environment(connected_env_id: str, ctx: Context = None) -> str:
-    """Delete a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-
-    try:
-        await testzeus_client.connected_environments.delete(connected_env_id)
-
-        if ctx:
-            await ctx.info(f"Deleted connected environment: {connected_env_id}")
-
-        return f"Successfully deleted connected environment with ID: {connected_env_id}"
-    except Exception as e:
-        error_msg = f"Error deleting connected environment: {str(e)}"
         if ctx:
             await ctx.error(error_msg)
         return error_msg
@@ -4967,148 +4906,6 @@ async def get_test_suite_node_run(node_run_id: str, ctx: Context = None) -> str:
         return f"Test suite node run details:\n{json.dumps(nr_data, indent=2)}"
     except Exception as e:
         error_msg = f"Error getting test suite node run: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-# ---------------------- Connected-environment file ops ---------------------
-# (create/get/list/update/delete_connected_environment already exist above)
-
-
-@mcp.tool()
-async def add_connected_environment_code_file(
-    connected_environment_id: str, file_path: str, ctx: Context = None
-) -> str:
-    """Add a code file to a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.add_code_file(cid, file_path)
-        if ctx:
-            await ctx.info(f"Added code file to connected environment: {cid}")
-        return f"Successfully added code file to connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error adding connected environment code file: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def remove_connected_environment_code_file(
-    connected_environment_id: str, file_name: str, ctx: Context = None
-) -> str:
-    """Remove a code file from a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.remove_code_file(cid, file_name)
-        if ctx:
-            await ctx.info(f"Removed code file from connected environment: {cid}")
-        return f"Successfully removed code file from connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error removing connected environment code file: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def remove_all_connected_environment_code_files(
-    connected_environment_id: str, ctx: Context = None
-) -> str:
-    """Remove all code files from a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.remove_all_code_files(cid)
-        if ctx:
-            await ctx.info(f"Removed all code files from connected environment: {cid}")
-        return f"Successfully removed all code files from connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error removing all connected environment code files: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def add_connected_environment_metadata_file(
-    connected_environment_id: str, file_path: str, ctx: Context = None
-) -> str:
-    """Add a metadata file to a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.add_metadata_file(cid, file_path)
-        if ctx:
-            await ctx.info(f"Added metadata file to connected environment: {cid}")
-        return f"Successfully added metadata file to connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error adding connected environment metadata file: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def remove_connected_environment_metadata_file(
-    connected_environment_id: str, file_name: str, ctx: Context = None
-) -> str:
-    """Remove a metadata file from a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.remove_metadata_file(cid, file_name)
-        if ctx:
-            await ctx.info(f"Removed metadata file from connected environment: {cid}")
-        return f"Successfully removed metadata file from connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error removing connected environment metadata file: {str(e)}"
-        if ctx:
-            await ctx.error(error_msg)
-        return error_msg
-
-
-@mcp.tool()
-async def remove_all_connected_environment_metadata_files(
-    connected_environment_id: str, ctx: Context = None
-) -> str:
-    """Remove all metadata files from a connected environment."""
-    if not await ensure_authenticated():
-        await authenticate_testzeus()
-    if testzeus_client is None:
-        return "Authentication failed - unable to connect to TestZeus"
-
-    cid = connected_environment_id
-    try:
-        await testzeus_client.connected_environments.remove_all_metadata_files(cid)
-        if ctx:
-            await ctx.info(f"Removed all metadata files from connected environment: {cid}")
-        return f"Successfully removed all metadata files from connected environment {cid}"
-    except Exception as e:
-        error_msg = f"Error removing all connected environment metadata files: {str(e)}"
         if ctx:
             await ctx.error(error_msg)
         return error_msg
