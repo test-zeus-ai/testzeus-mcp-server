@@ -1954,7 +1954,7 @@ wheels = [
 
 [[package]]
 name = "testzeus-mcp-server"
-version = "2.0.1"
+version = "2.0.3"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -1987,7 +1987,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "testzeus-sdk", specifier = ">=0.0.24" },
+    { name = "testzeus-sdk", specifier = ">=0.0.25,!=0.0.26" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=4.0.0" },
 ]
 provides-extras = ["dev"]
@@ -2000,7 +2000,7 @@ dev = [
 
 [[package]]
 name = "testzeus-sdk"
-version = "0.0.24"
+version = "0.0.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2012,9 +2012,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/c0/c1116241cd300f6bb29fc804e10d27eb6059b9a757b569a78dc45f279741/testzeus_sdk-0.0.24.tar.gz", hash = "sha256:f1c6b24222fa26d4ef02bc83c632e791f64f19ba9c6afaaef984da54ee01148f", size = 75081, upload-time = "2026-07-13T16:55:12.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/bb/70500d1180f9ac3d5e64b2f8bd8f48f7be5b6383bdb907a8f6f5ceddc005/testzeus_sdk-0.0.25.tar.gz", hash = "sha256:32e9e300ed60ff2316768040048d69f3832468e047c00d6a9dd20b71c965c715", size = 75740, upload-time = "2026-07-16T09:14:23.872Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/7a/d26a0d21b005ee1b07201bdf22392905933f55bda6ea8b70fe75a70b4c8c/testzeus_sdk-0.0.24-py3-none-any.whl", hash = "sha256:d237fcec1ce705ef8272b0b62d672d5a62f1c5f6924de809320f0da1b205e1f0", size = 116532, upload-time = "2026-07-13T16:55:10.777Z" },
+    { url = "https://files.pythonhosted.org/packages/34/29/9d755a989dfbd19c96ad9573742588a66171574c881477f08cbe380f2d27/testzeus_sdk-0.0.25-py3-none-any.whl", hash = "sha256:600d647f10981146433132e67a5bccdaccf7669ba6c60efcbcf3769cc0b9e4d6", size = 118079, upload-time = "2026-07-16T09:14:22.696Z" },
 ]
 
 [[package]]
