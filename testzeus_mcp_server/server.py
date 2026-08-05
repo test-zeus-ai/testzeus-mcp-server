@@ -4751,9 +4751,7 @@ async def get_adversary_agent(agent_id: str, ctx: Context = None) -> str:
                         "id": p.get("id") if isinstance(p, dict) else None,
                         "risk_level": p.get("risk_level") if isinstance(p, dict) else None,
                         "objective": (
-                            _preview_text(p.get("objective"), 200)
-                            if isinstance(p, dict)
-                            else None
+                            _preview_text(p.get("objective"), 200) if isinstance(p, dict) else None
                         ),
                     }
                     for p in pathways[:25]
