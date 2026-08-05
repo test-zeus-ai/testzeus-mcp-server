@@ -609,6 +609,13 @@ async def create_test_suite(
             await ctx.error(error_msg)
         return error_msg
 
+    user_id = testzeus_client.get_user_id()
+    if not user_id:
+        return (
+            "Error creating test suite: could not resolve the authenticated user id "
+            "(created_by is required). Re-authenticate and try again."
+        )
+
     try:
         suite = await testzeus_client.test_suites.create(
             {
@@ -620,7 +627,7 @@ async def create_test_suite(
                 "environment": environment,
                 "tags": tags or [],
                 "notification_channels": notification_channels or [],
-                "created_by": testzeus_client.get_user_id(),
+                "created_by": user_id,
             }
         )
 
@@ -4530,13 +4537,20 @@ async def create_test_suite_schedule(
     if testzeus_client is None:
         return "Authentication failed - unable to connect to TestZeus"
 
+    user_id = testzeus_client.get_user_id()
+    if not user_id:
+        return (
+            "Error creating test suite schedule: could not resolve the authenticated "
+            "user id (created_by is required). Re-authenticate and try again."
+        )
+
     try:
         data: dict[str, Any] = {
             "name": name,
             "test_suite": test_suite,
             "cron_expression": cron_expression,
             "is_active": is_active,
-            "created_by": testzeus_client.get_user_id(),
+            "created_by": user_id,
         }
         if environment is not None:
             data["environment"] = environment
