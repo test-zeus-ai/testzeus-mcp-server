@@ -69,9 +69,12 @@ class TestPyprojectToml:
             assert part.isdigit() or part.startswith("0"), f"Invalid version part: {part}"
 
     def test_project_version_is_valid(self, pyproject_data):
-        """Test that version is current and valid."""
+        """Test that version is current and valid (semver, >= 2.0.0)."""
         version = pyproject_data["project"]["version"]
-        assert version == "2.0.0", f"Expected version 2.0.0, got {version}"
+        parts = version.split(".")
+        assert len(parts) == 3, f"Expected semver X.Y.Z, got {version}"
+        assert all(p.isdigit() for p in parts), f"Non-numeric version part in {version}"
+        assert tuple(int(p) for p in parts) >= (2, 0, 0), f"Version must be >= 2.0.0, got {version}"
 
     def test_dependencies_present(self, pyproject_data):
         """Test that required dependencies are listed."""
@@ -92,10 +95,17 @@ class TestPyprojectToml:
         assert ">=2.0.0" in fastmcp_dep, "FastMCP should be >= 2.0.0"
 
     def test_testzeus_sdk_version(self, pyproject_data):
-        """Test TestZeus SDK version constraint."""
+        """Test TestZeus SDK version floor (>= 0.0.20 for mobile/device pool)."""
+        import re
+
         dependencies = pyproject_data["project"]["dependencies"]
         sdk_dep = [d for d in dependencies if d.startswith("testzeus-sdk")][0]
-        assert ">=0.0.20" in sdk_dep, "TestZeus SDK must be >= 0.0.20 for mobile and device pool support"
+        match = re.search(r">=\s*(\d+)\.(\d+)\.(\d+)", sdk_dep)
+        assert match, f"testzeus-sdk must declare a >= floor: {sdk_dep}"
+        floor = tuple(int(x) for x in match.groups())
+        assert floor >= (0, 0, 20), (
+            f"TestZeus SDK must be >= 0.0.20 for mobile and device pool support: {sdk_dep}"
+        )
 
     def test_dev_dependencies(self, pyproject_data):
         """Test that dev dependencies are specified."""
@@ -139,9 +149,7 @@ class TestPyprojectToml:
     def test_repository_url_correct(self, pyproject_data):
         """Test that repository URL is correct."""
         urls = pyproject_data["project"]["urls"]
-        assert (
-            "github.com/testzeus/testzeus-mcp-server" in urls["Repository"]
-        )
+        assert "github.com/testzeus/testzeus-mcp-server" in urls["Repository"]
 
     def test_authors_present(self, pyproject_data):
         """Test that authors are specified."""
@@ -225,9 +233,9 @@ class TestPyprojectToml:
 
         for dep in dependencies:
             # Should have version specifier (>=, ==, <, etc.)
-            assert any(
-                op in dep for op in [">=", "==", ">", "<", "~="]
-            ), f"Dependency missing version constraint: {dep}"
+            assert any(op in dep for op in [">=", "==", ">", "<", "~="]), (
+                f"Dependency missing version constraint: {dep}"
+            )
 
     def test_project_description_not_empty(self, pyproject_data):
         """Test that project description is meaningful."""
@@ -322,6 +330,7 @@ class TestPyprojectEdgeCases:
 
     def test_no_empty_sections(self, pyproject_data):
         """Test that there are no empty sections."""
+
         def check_empty(data, path=""):
             if isinstance(data, dict):
                 for key, value in data.items():
@@ -339,6 +348,7 @@ class TestPyprojectEdgeCases:
 
     def test_no_todo_comments_in_fields(self, pyproject_data):
         """Test that there are no TODO comments in important fields."""
+
         def check_todos(data):
             if isinstance(data, str):
                 assert "TODO" not in data.upper(), f"TODO found in: {data}"
