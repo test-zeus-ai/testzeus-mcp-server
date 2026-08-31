@@ -1,0 +1,63 @@
+name: Release metadata check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    # Validate every PR targeting dev or main, including promotions and backmerges.
+    branches: [dev, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    name: release-metadata / validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Write PR body to file
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            fs.writeFileSync('pr-body.txt', context.payload.pull_request.body ?? '', 'utf8');
+
+      - name: Validate PR metadata
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY_FILE: pr-body.txt
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node scripts/release/validate-pr-metadata.mjs
+
+  sync:
+    name: release-metadata / pr-sync
+    if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize' || github.event.action == 'edited'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Write PR body to file
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            fs.writeFileSync('pr-body.txt', context.payload.pull_request.body ?? '', 'utf8');
+
+      - name: Validate PR description matches latest commits
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY_FILE: pr-body.txt
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node scripts/release/validate-pr-sync.mjs
