@@ -55,7 +55,7 @@ claude mcp add testzeus \
   --env TESTZEUS_EMAIL=your-email@example.com \
   --env TESTZEUS_PASSWORD='your-password' \
   --env TESTZEUS_BASE_URL=https://pb.prod.testzeus.app \
-  -- uv run --directory /path/to/testzeus-mcp-server testzeus-mcp-server
+  -- uv run --directory /absolute/path/to/testzeus-mcp-server testzeus-mcp-server
 ```
 
 This produces the following MCP server configuration:
@@ -79,6 +79,7 @@ This produces the following MCP server configuration:
   }
 }
 ```
+Replace `/path/to/your/testzeus-mcp-server` with the absolute path to your local testzeus-mcp-server directory.
 
 #### Claude Desktop
 
