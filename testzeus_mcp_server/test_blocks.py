@@ -9,7 +9,7 @@ verify then save.
 from typing import Any
 
 SDK_HINT = "Test Blocks tools need testzeus-sdk>=0.0.28. Upgrade with: pip install -U testzeus-sdk"
-STEP_TYPES = ("browser", "backend", "soql", "apex", "http")
+STEP_TYPES = ("browser", "mobile", "backend", "soql", "apex", "http")
 RUNNABLE_VERIFICATION = ("verified", "inferred", "transcribed")
 
 
@@ -72,6 +72,50 @@ def test_identity(test: Any) -> dict[str, Any]:
         "test_data": getattr(test, "test_data", None),
         "tags": getattr(test, "tags", None),
     }
+
+
+def summarize_builder(payload: dict[str, Any]) -> dict[str, Any]:
+    """Compact mutation response: ids, status, ordered steps, validation errors."""
+    blocks = payload.get("blocks") or []
+    steps = []
+    for block in blocks:
+        if str(block.get("kind") or "intent") not in ("", "intent"):
+            continue
+        steps.append(
+            {
+                "id": block.get("id"),
+                "label": block.get("label"),
+                "step_type": block.get("step_type") or "browser",
+                "verification": (block.get("implementation") or {}).get("verificationStatus")
+                or "unverified",
+                "assert": bool((block.get("authoring") or {}).get("isAssert")),
+            }
+        )
+    validation = payload.get("validation") or {}
+    return {
+        "id": payload.get("id"),
+        "name": payload.get("name"),
+        "builder_status": payload.get("builder_status"),
+        "block_graph_hash": payload.get("block_graph_hash"),
+        "environment": payload.get("environment"),
+        "environment_url_key": payload.get("environment_url_key"),
+        "steps": steps,
+        "errors": [
+            f'{issue.get("code")}: {issue.get("message")}' for issue in validation.get("errors") or []
+        ],
+    }
+
+
+def verify_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    summary = summarize_builder(payload)
+    failed = [
+        step
+        for step in summary["steps"]
+        if step["verification"] not in RUNNABLE_VERIFICATION
+    ]
+    summary["status"] = "failed" if failed else "verified"
+    summary["failed_steps"] = failed
+    return summary
 
 
 def validate_step_type(step_type: str | None) -> str | None:

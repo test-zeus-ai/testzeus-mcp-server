@@ -391,7 +391,7 @@ def _tb():
     return test_blocks_ops.manager(testzeus_client)
 
 
-async def _tb_call(ctx: Context, label: str, operation):
+async def _tb_call(ctx: Context, label: str, operation, compact: bool = True):
     if not await ensure_authenticated():
         await authenticate_testzeus()
     try:
@@ -400,12 +400,27 @@ async def _tb_call(ctx: Context, label: str, operation):
             await ctx.info(label)
         if isinstance(result, str):
             return result
-        return json.dumps(result, indent=2, cls=DateTimeEncoder)
+        if compact and isinstance(result, dict) and "blocks" in result:
+            result = test_blocks_ops.summarize_builder(result)
+        return json.dumps(result, cls=DateTimeEncoder)
     except Exception as e:
-        error_msg = f"Error {label}: {str(e)}"
+        error_msg = f"Error: {str(e)}"
         if ctx:
             await ctx.error(error_msg)
         return error_msg
+
+
+async def _tests_for_run(test_ids: list[str] | None, tags: list[str] | None) -> list:
+    loaded = []
+    if test_ids:
+        for test_id in test_ids:
+            loaded.append(await testzeus_client.tests.get_one(test_id))
+        return loaded
+    if not tags:
+        return loaded
+    listing = await testzeus_client.tests.get_list(filters={"tags": tags}, per_page=100)
+    items = listing.get("items") if isinstance(listing, dict) else getattr(listing, "items", [])
+    return list(items or [])
 
 
 @mcp.tool()
@@ -415,12 +430,13 @@ async def create_test_blocks(
     environment: str | None = None,
     test_data: list[str] | None = None,
     knowledge_base_id: list[str] | None = None,
+    idempotency_key: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Create an empty Test Blocks test (ordered Playwright / tz Python steps).
 
     Do not use create_test for this: that path requires a Gherkin feature.
-    After create, add steps, verify, save, then live_run_test_blocks.
+    After create, set environment_url_key via update_test_blocks_config, add steps, verify, save, then live_run_test_blocks.
     """
     if testing_type == "mobile" and not environment:
         return "Error: environment is required when testing_type is 'mobile'"
@@ -433,6 +449,7 @@ async def create_test_blocks(
             environment=environment,
             test_data=test_data,
             knowledge_base_id=knowledge_base_id,
+            idempotency_key=idempotency_key,
         ),
     )
 
@@ -440,14 +457,16 @@ async def create_test_blocks(
 @mcp.tool()
 async def get_test_blocks(test_id: str, ctx: Context = None) -> str:
     """Get a Test Blocks test with its steps, validation, and builder_status."""
-    return await _tb_call(ctx, f"Retrieved Test Blocks test {test_id}", lambda tb: tb.get(test_id))
+    return await _tb_call(
+        ctx, f"Retrieved Test Blocks test {test_id}", lambda tb: tb.get(test_id), compact=False
+    )
 
 
 @mcp.tool()
 async def add_test_blocks_step(
     test_id: str,
     instruction: str = "",
-    step_type: Literal["browser", "backend", "soql", "apex", "http"] | None = None,
+    step_type: Literal["browser", "mobile", "backend", "soql", "apex", "http"] | None = None,
     source: str | None = None,
     label: str | None = None,
     after_step_id: str | None = None,
@@ -493,7 +512,7 @@ async def update_test_blocks_step(
     instruction: str | None = None,
     source: str | None = None,
     label: str | None = None,
-    step_type: Literal["browser", "backend", "soql", "apex", "http"] | None = None,
+    step_type: Literal["browser", "mobile", "backend", "soql", "apex", "http"] | None = None,
     request: dict[str, Any] | None = None,
     is_assert: bool | None = None,
     target_org: str | None = None,
@@ -561,22 +580,26 @@ async def verify_test_blocks(
     test_id: str,
     through_step_id: str | None = None,
     wait: bool = True,
-    timeout: int = 900,
+    timeout: int = 90,
     ctx: Context = None,
 ) -> str:
     """Run steps in order so they can be saved.
 
     The worker leases a browser when a browser step needs one.
+    Default wait is 90s; use wait=false and poll get_test_blocks if the client times out sooner.
     """
+    if timeout < 0:
+        return "Error: timeout must be >= 0"
 
     async def operation(tb):
         started = await tb.verify(test_id, through_step_id=through_step_id)
         if not wait or started.get("status") == "already_current":
             return started
         await tb.wait_for_verify(test_id, timeout=timeout)
-        return await tb.get(test_id)
+        payload = await tb.get(test_id)
+        return test_blocks_ops.verify_summary(payload)
 
-    return await _tb_call(ctx, f"Verified Test Blocks test {test_id}", operation)
+    return await _tb_call(ctx, f"Verified Test Blocks test {test_id}", operation, compact=False)
 
 
 @mcp.tool()
@@ -586,12 +609,14 @@ async def save_test_blocks(test_id: str, ctx: Context = None) -> str:
 
 
 @mcp.tool()
-async def live_run_test_blocks(test_id: str, ctx: Context = None) -> str:
+async def live_run_test_blocks(test_id: str, key: str | None = None, ctx: Context = None) -> str:
     """Start an official run of a saved, ready Test Blocks test.
 
-    Prefer this over run_test for Test Blocks.
+    Prefer this over run_test for Test Blocks. Pass key to make retries idempotent.
     """
-    return await _tb_call(ctx, f"Queued live run for {test_id}", lambda tb: tb.live_run(test_id))
+    return await _tb_call(
+        ctx, f"Queued live run for {test_id}", lambda tb: tb.live_run(test_id, key=key)
+    )
 
 
 @mcp.tool()
@@ -619,11 +644,10 @@ async def run_test(
         return "Error: test_ids and tags cannot be used together, provide one of them."
 
     try:
-        if test_ids:
-            loaded = [await testzeus_client.tests.get_one(test_id) for test_id in test_ids]
-            blocked = test_blocks_ops.not_ready_run_error(loaded)
-            if blocked:
-                return blocked
+        loaded = await _tests_for_run(test_ids, tags)
+        blocked = test_blocks_ops.not_ready_run_error(loaded)
+        if blocked:
+            return blocked
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,
@@ -2808,11 +2832,10 @@ async def create_test_run_group(
         return "Error: test_ids and tags cannot be used together, provide one of them."
 
     try:
-        if test_ids:
-            loaded = [await testzeus_client.tests.get_one(test_id) for test_id in test_ids]
-            blocked = test_blocks_ops.not_ready_run_error(loaded)
-            if blocked:
-                return blocked
+        loaded = await _tests_for_run(test_ids, tags)
+        blocked = test_blocks_ops.not_ready_run_error(loaded)
+        if blocked:
+            return blocked
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,

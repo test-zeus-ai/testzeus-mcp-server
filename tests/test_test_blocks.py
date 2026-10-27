@@ -8,7 +8,9 @@ from testzeus_mcp_server.test_blocks import (
     is_test_blocks_test,
     manager,
     not_ready_run_error,
+    summarize_builder,
     validate_step_type,
+    verify_summary,
 )
 
 
@@ -60,11 +62,42 @@ class TestHelpers:
     def test_validate_step_type(self):
         assert validate_step_type(None) is None
         assert validate_step_type("backend") == "backend"
+        assert validate_step_type("mobile") == "mobile"
         try:
             validate_step_type("gherkin")
             raise AssertionError("expected error")
         except ValueError as exc:
             assert "step_type" in str(exc)
+
+    def test_summarize_and_verify(self):
+        payload = {
+            "id": "t1",
+            "name": "n",
+            "builder_status": "authoring",
+            "block_graph_hash": "h",
+            "blocks": [
+                {
+                    "id": "a",
+                    "kind": "intent",
+                    "label": "one",
+                    "step_type": "backend",
+                    "implementation": {"verificationStatus": "verified"},
+                    "authoring": {},
+                },
+                {
+                    "id": "b",
+                    "kind": "intent",
+                    "label": "two",
+                    "implementation": {"verificationStatus": "failed"},
+                    "authoring": {"isAssert": True},
+                },
+            ],
+            "validation": {"errors": [{"code": "UNVERIFIED", "message": "fix"}]},
+        }
+        summary = summarize_builder(payload)
+        assert summary["id"] == "t1" and len(summary["steps"]) == 2
+        assert "UNVERIFIED" in summary["errors"][0]
+        assert verify_summary(payload)["status"] == "failed"
 
 
 class TestServerSurface:
