@@ -101,7 +101,7 @@ def summarize_builder(payload: dict[str, Any]) -> dict[str, Any]:
         "environment_url_key": payload.get("environment_url_key"),
         "steps": steps,
         "errors": [
-            f'{issue.get("code")}: {issue.get("message")}'
+            f"{issue.get('code')}: {issue.get('message')}"
             for issue in validation.get("errors") or []
         ],
     }
@@ -110,9 +110,7 @@ def summarize_builder(payload: dict[str, Any]) -> dict[str, Any]:
 def verify_summary(payload: dict[str, Any]) -> dict[str, Any]:
     summary = summarize_builder(payload)
     failed = [
-        step
-        for step in summary["steps"]
-        if step["verification"] not in RUNNABLE_VERIFICATION
+        step for step in summary["steps"] if step["verification"] not in RUNNABLE_VERIFICATION
     ]
     summary["status"] = "failed" if failed else "verified"
     summary["failed_steps"] = failed
