@@ -26,37 +26,8 @@ jobs:
         with:
           version: "latest"
 
-      - name: Generate testzeus-sdk checkout token
-        id: sdk-token
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: test-zeus-ai
-          repositories: testzeus-sdk
-
-      - name: Checkout testzeus-sdk
-        uses: actions/checkout@v5
-        with:
-          repository: test-zeus-ai/testzeus-sdk
-          ref: dev
-          path: .deps/testzeus-sdk
-          token: ${{ steps.sdk-token.outputs.token }}
-
       - name: Install dependencies
-        run: |
-          set +e
-          uv sync --dev
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo "Installed dependencies from package indexes"
-            exit 0
-          fi
-          echo "testzeus-sdk is unpublished; using GitHub checkout at .deps/testzeus-sdk"
-          printf '\n[tool.uv.sources]\ntestzeus-sdk = { path = ".deps/testzeus-sdk" }\n' >> pyproject.toml
-          uv lock --upgrade-package testzeus-sdk
-          uv sync --dev
+        run: bash scripts/ci/install-deps.sh
 
       - name: Run linting
         run: |
