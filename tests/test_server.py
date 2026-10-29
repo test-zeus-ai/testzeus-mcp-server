@@ -192,6 +192,9 @@ class TestServerDocumentation:
             assert "async def list_tests" in content
             assert "async def get_test" in content
             assert "async def create_test" in content
+            assert "async def create_test_blocks" in content
+            assert "async def verify_test_blocks" in content
+            assert "async def live_run_test_blocks" in content
             assert "async def list_test_suites" in content
             assert "async def create_test_suite" in content
             assert "async def list_test_suite_runs" in content
@@ -240,6 +243,11 @@ class TestServerDocumentation:
             assert "delete_test" in content
             assert "get_test_input_params" in content
             assert "get_dependent_test_suites" in content
+            assert "create_test_blocks" in content
+            assert "add_test_blocks_step" in content
+            assert "verify_test_blocks" in content
+            assert "save_test_blocks" in content
+            assert "live_run_test_blocks" in content
 
     def test_server_implements_test_suite_management_tools(self):
         """Test that server implements suite management functionality."""
