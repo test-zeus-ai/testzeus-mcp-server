@@ -436,7 +436,8 @@ async def create_test_blocks(
     """Create an empty Test Blocks test (ordered Playwright / tz Python steps).
 
     Do not use create_test for this: that path requires a Gherkin feature.
-    After create, set environment_url_key via update_test_blocks_config, add steps, verify, save, then live_run_test_blocks.
+    After create, set environment_url_key via update_test_blocks_config,
+    add steps, verify, save, then live_run_test_blocks.
     """
     if testing_type == "mobile" and not environment:
         return "Error: environment is required when testing_type is 'mobile'"

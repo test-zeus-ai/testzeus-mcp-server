@@ -101,7 +101,8 @@ def summarize_builder(payload: dict[str, Any]) -> dict[str, Any]:
         "environment_url_key": payload.get("environment_url_key"),
         "steps": steps,
         "errors": [
-            f'{issue.get("code")}: {issue.get("message")}' for issue in validation.get("errors") or []
+            f'{issue.get("code")}: {issue.get("message")}'
+            for issue in validation.get("errors") or []
         ],
     }
 
