@@ -31,6 +31,8 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
 from testzeus_sdk.client import TestZeusClient
 
+from testzeus_mcp_server import test_blocks as test_blocks_ops
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -129,6 +131,10 @@ async def list_tests(
                     "name": test.name,
                     "testing_type": test.testing_type,
                     "execution_mode": test.execution_mode,
+                    "executor": getattr(test, "executor", None),
+                    "builder_status": getattr(test, "builder_status", None),
+                    "origin": getattr(test, "origin", None),
+                    "authoring_mode": getattr(test, "authoring_mode", None),
                     "test_feature": test.test_feature,
                     "tags": test.tags,
                     "environment": test.environment,
@@ -161,6 +167,11 @@ async def get_test(test_id_or_name: str, ctx: Context = None) -> str:
             "name": test.name,
             "testing_type": test.testing_type,
             "execution_mode": test.execution_mode,
+            "executor": getattr(test, "executor", None),
+            "builder_status": getattr(test, "builder_status", None),
+            "origin": getattr(test, "origin", None),
+            "authoring_mode": getattr(test, "authoring_mode", None),
+            "builder_validation": getattr(test, "builder_validation", None),
             "test_feature": test.test_feature,
             "tags": test.tags,
             "test_data": test.test_data,
@@ -198,9 +209,10 @@ async def create_test(
     execution_mode: Literal["lenient", "strict"] = "lenient",
     ctx: Context = None,
 ) -> str:
-    """Create a new test in TestZeus.
+    """Create a Gherkin (Hercules) test in TestZeus.
 
     testing_type defaults to 'web'. When set to 'mobile', an environment reference is required.
+    For a step-based Test Blocks test (Playwright / tz Python), use create_test_blocks instead.
     """
     if testing_type == "mobile" and not environment:
         return "Error: environment is required when testing_type is 'mobile'"
@@ -375,6 +387,247 @@ async def delete_test(test_id_or_name: str, ctx: Context = None) -> str:
         return error_msg
 
 
+def _tb():
+    return test_blocks_ops.manager(testzeus_client)
+
+
+async def _tb_call(ctx: Context, label: str, operation, compact: bool = True):
+    if not await ensure_authenticated():
+        await authenticate_testzeus()
+    try:
+        result = await operation(_tb())
+        if ctx:
+            await ctx.info(label)
+        if isinstance(result, str):
+            return result
+        if compact and isinstance(result, dict) and "blocks" in result:
+            result = test_blocks_ops.summarize_builder(result)
+        return json.dumps(result, cls=DateTimeEncoder)
+    except Exception as e:
+        error_msg = f"Error: {str(e)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return error_msg
+
+
+async def _tests_for_run(test_ids: list[str] | None, tags: list[str] | None) -> list:
+    loaded = []
+    if test_ids:
+        for test_id in test_ids:
+            loaded.append(await testzeus_client.tests.get_one(test_id))
+        return loaded
+    if not tags:
+        return loaded
+    listing = await testzeus_client.tests.get_list(filters={"tags": tags}, per_page=100)
+    items = listing.get("items") if isinstance(listing, dict) else getattr(listing, "items", [])
+    return list(items or [])
+
+
+@mcp.tool()
+async def create_test_blocks(
+    name: str,
+    testing_type: Literal["web", "mobile"] = "web",
+    environment: str | None = None,
+    test_data: list[str] | None = None,
+    knowledge_base_id: list[str] | None = None,
+    idempotency_key: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """Create an empty Test Blocks test (ordered Playwright / tz Python steps).
+
+    Do not use create_test for this: that path requires a Gherkin feature.
+    After create, set environment_url_key via update_test_blocks_config,
+    add steps, verify, save, then live_run_test_blocks.
+    """
+    if testing_type == "mobile" and not environment:
+        return "Error: environment is required when testing_type is 'mobile'"
+    return await _tb_call(
+        ctx,
+        f"Created Test Blocks test '{name}'",
+        lambda tb: tb.create(
+            name,
+            testing_type=testing_type,
+            environment=environment,
+            test_data=test_data,
+            knowledge_base_id=knowledge_base_id,
+            idempotency_key=idempotency_key,
+        ),
+    )
+
+
+@mcp.tool()
+async def get_test_blocks(test_id: str, ctx: Context = None) -> str:
+    """Get a Test Blocks test with its steps, validation, and builder_status."""
+    return await _tb_call(
+        ctx, f"Retrieved Test Blocks test {test_id}", lambda tb: tb.get(test_id), compact=False
+    )
+
+
+@mcp.tool()
+async def add_test_blocks_step(
+    test_id: str,
+    instruction: str = "",
+    step_type: Literal["browser", "mobile", "backend", "soql", "apex", "http"] | None = None,
+    source: str | None = None,
+    label: str | None = None,
+    after_step_id: str | None = None,
+    request: dict[str, Any] | None = None,
+    is_assert: bool = False,
+    target_org: str | None = None,
+    prepend: bool = False,
+    ctx: Context = None,
+) -> str:
+    """Add one step. Without source, code is generated from instruction when the test is verified.
+
+    request is the typed form for soql/apex/http, e.g.
+    {"query": "SELECT Id FROM Account", "outputName": "accounts"}.
+    """
+    try:
+        test_blocks_ops.validate_step_type(step_type)
+    except ValueError as exc:
+        return f"Error: {exc}"
+    if not instruction.strip() and not (source or "").strip() and request is None:
+        return "Error: provide instruction, source, or a typed request"
+    return await _tb_call(
+        ctx,
+        f"Added step to {test_id}",
+        lambda tb: tb.add_step(
+            test_id,
+            instruction=instruction,
+            step_type=step_type,
+            source=source,
+            label=label,
+            after_step_id=after_step_id,
+            request=request,
+            is_assert=is_assert,
+            target_org=target_org,
+            prepend=prepend,
+        ),
+    )
+
+
+@mcp.tool()
+async def update_test_blocks_step(
+    test_id: str,
+    step_id: str,
+    instruction: str | None = None,
+    source: str | None = None,
+    label: str | None = None,
+    step_type: Literal["browser", "mobile", "backend", "soql", "apex", "http"] | None = None,
+    request: dict[str, Any] | None = None,
+    is_assert: bool | None = None,
+    target_org: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """Edit a step. Changing source marks it unverified; verify again before saving."""
+    try:
+        test_blocks_ops.validate_step_type(step_type)
+    except ValueError as exc:
+        return f"Error: {exc}"
+    return await _tb_call(
+        ctx,
+        f"Updated step {step_id}",
+        lambda tb: tb.update_step(
+            test_id,
+            step_id,
+            instruction=instruction,
+            source=source,
+            label=label,
+            step_type=step_type,
+            request=request,
+            is_assert=is_assert,
+            target_org=target_org,
+        ),
+    )
+
+
+@mcp.tool()
+async def delete_test_blocks_steps(test_id: str, step_ids: list[str], ctx: Context = None) -> str:
+    """Delete steps; the remaining steps are reconnected in order."""
+    if not step_ids:
+        return "Error: step_ids is required"
+    return await _tb_call(
+        ctx, f"Deleted {len(step_ids)} step(s)", lambda tb: tb.delete_steps(test_id, step_ids)
+    )
+
+
+@mcp.tool()
+async def update_test_blocks_config(
+    test_id: str,
+    environment: str | None = None,
+    environment_url_key: str | None = None,
+    test_data: list[str] | None = None,
+    knowledge_base_id: list[str] | None = None,
+    step_retry_count: int | None = None,
+    ctx: Context = None,
+) -> str:
+    """Change a Test Blocks test's environment, test data, knowledge bases, or step retry count."""
+    return await _tb_call(
+        ctx,
+        f"Updated config for {test_id}",
+        lambda tb: tb.update_config(
+            test_id,
+            environment=environment,
+            environment_url_key=environment_url_key,
+            test_data=test_data,
+            knowledge_base_id=knowledge_base_id,
+            step_retry_count=step_retry_count,
+        ),
+    )
+
+
+@mcp.tool()
+async def verify_test_blocks(
+    test_id: str,
+    through_step_id: str | None = None,
+    wait: bool = True,
+    timeout: int = 90,
+    ctx: Context = None,
+) -> str:
+    """Run steps in order so they can be saved.
+
+    The worker leases a browser when a browser step needs one.
+    Default wait is 90s; use wait=false and poll get_test_blocks if the client times out sooner.
+    """
+    if timeout < 0:
+        return "Error: timeout must be >= 0"
+
+    async def operation(tb):
+        started = await tb.verify(test_id, through_step_id=through_step_id)
+        if not wait or started.get("status") == "already_current":
+            return started
+        await tb.wait_for_verify(test_id, timeout=timeout)
+        payload = await tb.get(test_id)
+        return test_blocks_ops.verify_summary(payload)
+
+    return await _tb_call(ctx, f"Verified Test Blocks test {test_id}", operation, compact=False)
+
+
+@mcp.tool()
+async def save_test_blocks(test_id: str, ctx: Context = None) -> str:
+    """Save the test. builder_status becomes ready only when every reachable step is verified."""
+    return await _tb_call(ctx, f"Saved Test Blocks test {test_id}", lambda tb: tb.save(test_id))
+
+
+@mcp.tool()
+async def live_run_test_blocks(test_id: str, key: str | None = None, ctx: Context = None) -> str:
+    """Start an official run of a saved, ready Test Blocks test.
+
+    Prefer this over run_test for Test Blocks. Pass key to make retries idempotent.
+    """
+    return await _tb_call(
+        ctx, f"Queued live run for {test_id}", lambda tb: tb.live_run(test_id, key=key)
+    )
+
+
+@mcp.tool()
+async def get_test_blocks_run_status(test_run_id: str, ctx: Context = None) -> str:
+    """Aggregated status of a Test Blocks live run, including dash steps and attachments."""
+    return await _tb_call(
+        ctx, f"Retrieved run status {test_run_id}", lambda tb: tb.get_run_status(test_run_id)
+    )
+
+
 @mcp.tool()
 async def run_test(
     name: str,
@@ -392,6 +645,10 @@ async def run_test(
         return "Error: test_ids and tags cannot be used together, provide one of them."
 
     try:
+        loaded = await _tests_for_run(test_ids, tags)
+        blocked = test_blocks_ops.not_ready_run_error(loaded)
+        if blocked:
+            return blocked
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,
@@ -2576,6 +2833,10 @@ async def create_test_run_group(
         return "Error: test_ids and tags cannot be used together, provide one of them."
 
     try:
+        loaded = await _tests_for_run(test_ids, tags)
+        blocked = test_blocks_ops.not_ready_run_error(loaded)
+        if blocked:
+            return blocked
         group = await testzeus_client.test_run_groups.create_and_execute(
             name=name,
             test_ids=test_ids,
